@@ -20,6 +20,7 @@ const CAPTURE_RADIUS_M = 20;
 // デバッグボタンは dev 環境のみ表示
 document.getElementById('btn-debug').style.display = IS_DEV ? '' : 'none';
 const AIZU_CASTLE = { lat: 37.4946, lon: 139.9293 };
+const TOKYO_STATION = { lat: 35.6812, lon: 139.7671 };
 
 let youkaiData = [];      // YokaiListItem[]
 let capturedIds = new Set();
@@ -37,6 +38,7 @@ let _wakeLock = null;
 const state = {
   playerPos: null,
   debugMode: false,
+  initialCentered: false,
   pendingUnseal: null,  // YokaiDetail
   currentDetail: null,  // YokaiDetail
 };
@@ -92,27 +94,35 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
 // --- Map ----------------------------------------------------
 function initMap() {
   map = L.map('map', {
-    center: [AIZU_CASTLE.lat, AIZU_CASTLE.lon],
+    center: [TOKYO_STATION.lat, TOKYO_STATION.lon],
     zoom: 16,
     zoomControl: false,
     attributionControl: false,
   });
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OSM',
-  }).addTo(map);
+  if (IS_NIGHT) {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      attribution: '© OSM © CARTO',
+    }).addTo(map);
+  } else {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OSM',
+    }).addTo(map);
+  }
 
   L.control.zoom({ position: 'topleft' }).addTo(map);
-  L.control.attribution({ position: 'bottomleft', prefix: false }).addAttribution('© OSM').addTo(map);
+  L.control.attribution({ position: 'bottomleft', prefix: false }).addAttribution(IS_NIGHT ? '© OSM © CARTO' : '© OSM').addTo(map);
 
-  youkaiData.forEach((y) => addYoukaiMarker(y));
+  const visibleYoukai = youkaiData.filter((y) => !y.night_only || IS_NIGHT);
+  visibleYoukai.forEach((y) => addYoukaiMarker(y));
 
   map.on('click', (e) => {
     if (state.debugMode) updatePlayerPosition(e.latlng.lat, e.latlng.lng);
   });
 
-  document.getElementById('stat-total').textContent = youkaiData.length;
+  document.getElementById('stat-total').textContent = visibleYoukai.length;
   updateStats();
 }
 
@@ -169,6 +179,10 @@ async function handleMarkerTap(youkai) {
 // --- Player position ----------------------------------------
 function updatePlayerPosition(lat, lon) {
   state.playerPos = { lat, lon };
+  if (!state.initialCentered) {
+    state.initialCentered = true;
+    map.setView([lat, lon], 16);
+  }
 
   if (!playerMarker) {
     const icon = L.divIcon({
@@ -242,7 +256,7 @@ function startGeolocation() {
     (pos) => updatePlayerPosition(pos.coords.latitude, pos.coords.longitude),
     (err) => {
       console.warn('Geolocation error:', err);
-      setStatus('位置情報拒否/失敗 — デバッグONで地図クリック');
+      setStatus(IS_DEV ? '位置情報拒否/失敗 — デバッグONで地図クリック' : '位置情報を取得できませんでした');
       autoEnableDebug();
     },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
@@ -250,6 +264,7 @@ function startGeolocation() {
 }
 
 function autoEnableDebug() {
+  if (!IS_DEV) return;
   if (!state.debugMode) toggleDebug();
   updatePlayerPosition(AIZU_CASTLE.lat, AIZU_CASTLE.lon);
 }

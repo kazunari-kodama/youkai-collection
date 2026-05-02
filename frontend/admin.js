@@ -98,6 +98,9 @@ function renderTable() {
     const rallyBadge = y.rally_key
       ? `<span class="badge-rally">ラリー</span>`
       : '';
+    const nightBadge = y.night_only
+      ? `<span class="badge-night">🌙夜のみ</span>`
+      : '';
     const rawId = y.yokai_id ?? '';
     const id = escHtml(rawId);
     const idAttr = escHtml(JSON.stringify(rawId)); // &quot;uuid&quot; — safe inside onclick=""
@@ -109,7 +112,7 @@ function renderTable() {
         <div class="cell-kana">${escHtml(y.kana ?? '')}</div>
       </td>
       <td class="cell-coords">${num(y.latitude)}, ${num(y.longitude)}</td>
-      <td>${rallyBadge}</td>
+      <td>${rallyBadge}${nightBadge}</td>
       <td>
         <button class="btn-edit" onclick="openForm(${idAttr})">編集</button>
         <button class="btn-delete" onclick="confirmDelete(${idAttr})">削除</button>
@@ -183,6 +186,7 @@ function openForm(id) {
     document.getElementById('f-appearance').value = y.appearance ?? '';
     document.getElementById('f-regions').value = (y.regions ?? []).join(', ');
     document.getElementById('f-category-tags').value = (y.category_tags ?? []).join(', ');
+    document.getElementById('f-night-only').checked = y.night_only === true;
 
     // Derive existing camera key from _icon_url (which is the camera URL)
     if (y._icon_url) {
@@ -202,6 +206,7 @@ function closeForm() {
 }
 
 function clearForm() {
+  document.getElementById('f-night-only').checked = false;
   ['f-rally-key', 'f-name', 'f-kana', 'f-lat', 'f-lon',
    'f-notes', 'f-appearance', 'f-regions', 'f-category-tags'].forEach((fid) => {
     document.getElementById(fid).value = '';
@@ -300,6 +305,7 @@ async function saveYoukai() {
     rally_key: document.getElementById('f-rally-key').value.trim(),
     regions: toArray(document.getElementById('f-regions').value),
     category_tags: toArray(document.getElementById('f-category-tags').value),
+    night_only: document.getElementById('f-night-only').checked || undefined,
     ...(images !== undefined ? { images, image_types } : {}),
   };
 

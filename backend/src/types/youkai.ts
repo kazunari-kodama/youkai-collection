@@ -15,6 +15,7 @@ export interface YokaiDBItem {
   category_tags?: string[];
   keywords?: string[];
   rally_key?: string;
+  night_only?: boolean;
 }
 
 /** GET /youkai レスポンスの1件 */
@@ -25,6 +26,7 @@ export interface YokaiListItem {
   lon: number;
   icon_url: string;
   camera_url: string;
+  night_only?: boolean;
 }
 
 /** GET /youkai/{id} レスポンス */

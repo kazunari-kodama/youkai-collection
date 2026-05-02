@@ -20,7 +20,7 @@ export const handler: APIGatewayProxyHandler = async () => {
     new ScanCommand({
       TableName: YOUKAI_TABLE,
       FilterExpression: 'attribute_not_exists(rally_key)',
-      ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, image_types',
+      ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, image_types, night_only',
       ExpressionAttributeNames: { '#n': 'name' },
     }),
   );
@@ -32,6 +32,7 @@ export const handler: APIGatewayProxyHandler = async () => {
     lon: item.longitude,
     icon_url: resolveIconUrl(item),
     camera_url: toCameraUrl(item.images, IMAGES_BASE_URL),
+    ...(item.night_only ? { night_only: true } : {}),
   }));
 
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify(items) };

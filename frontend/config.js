@@ -6,3 +6,7 @@ const API_BASE_URL = 'https://5rmuhg7c8d.execute-api.ap-northeast-1.amazonaws.co
 // DEV フラグ: localhost / 127.0.0.1、または ?debug=1 のときに true
 const IS_DEV = ['localhost', '127.0.0.1'].includes(location.hostname)
   || new URLSearchParams(location.search).get('debug') === '1';
+
+// ナイトタイムフラグ: 17時〜翌5時を夜とする
+const IS_NIGHT = new URLSearchParams(location.search).get('night') === '1'
+  || (() => { const h = new Date().getHours(); return h >= 17 || h < 8; })();
