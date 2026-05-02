@@ -1,0 +1,938 @@
+:root {
+  --ink: #1a1410;
+  --ink-soft: #2a2018;
+  --paper: #f0e6d2;
+  --paper-aged: #e8dcc0;
+  --vermilion: #c8302a;
+  --vermilion-deep: #8a1f1a;
+  --gold: #b8860b;
+  --night: #0d0a08;
+  --moonlight: #f5e6a8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: 'Noto Serif JP', serif;
+  background: var(--night);
+  color: var(--paper);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#map {
+  position: absolute; inset: 0;
+  z-index: 1;
+  filter: hue-rotate(-10deg) saturate(0.7) brightness(0.85);
+}
+
+/* HUD top bar */
+.hud-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 14px 18px 18px;
+  background: linear-gradient(to bottom, rgba(13,10,8,0.95) 0%, rgba(13,10,8,0.7) 60%, rgba(13,10,8,0) 100%);
+  pointer-events: none;
+}
+.hud-top > * { pointer-events: auto; }
+
+.title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  font-family: 'Shippori Mincho B1', serif;
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: 0.08em;
+  color: var(--paper);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 20px rgba(200,48,42,0.3);
+}
+.title .accent {
+  color: var(--vermilion);
+  margin-right: 4px;
+}
+
+.stats {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  color: var(--paper-aged);
+  letter-spacing: 0.05em;
+  background: rgba(26,20,16,0.7);
+  padding: 6px 12px;
+  border: 1px solid rgba(200,48,42,0.4);
+  border-radius: 2px;
+  backdrop-filter: blur(4px);
+}
+.stats .num {
+  color: var(--vermilion);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Floating buttons */
+.float-btn {
+  position: absolute;
+  z-index: 1000;
+  background: rgba(26,20,16,0.92);
+  color: var(--paper);
+  border: 1px solid var(--vermilion);
+  border-radius: 2px;
+  padding: 10px 14px;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  transition: all 0.2s;
+}
+.float-btn:hover, .float-btn:active {
+  background: var(--vermilion);
+  color: var(--paper);
+}
+.float-btn .icon { margin-right: 6px; }
+
+#btn-collection { top: 70px; right: 12px; }
+#btn-locate { bottom: 80px; right: 12px; padding: 12px 14px; }
+#btn-debug {
+  bottom: 12px;
+  left: 12px;
+  font-size: 11px;
+  padding: 6px 10px;
+  background: rgba(26,20,16,0.85);
+  border-color: rgba(184,134,11,0.6);
+}
+#btn-debug.active {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--gold);
+}
+
+/* Status indicator */
+.status-bar {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  z-index: 1000;
+  background: rgba(26,20,16,0.85);
+  color: var(--paper-aged);
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-family: 'Noto Serif JP', serif;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  max-width: 50%;
+  text-align: right;
+}
+
+/* Leaflet icon wrapper — line-height/spacing リセット */
+.youkai-icon-wrapper {
+  line-height: 0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Hitodama markers */
+.hitodama-marker {
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  animation: hitodama-float 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(85,170,255,0.8));
+}
+.hitodama-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+@keyframes hitodama-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-6px) rotate(3deg); }
+}
+.hitodama-marker.in-range {
+  animation: hitodama-alert 0.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(85,170,255,1));
+}
+@keyframes hitodama-alert {
+  0%, 100% { transform: translateY(0) rotate(-3deg) scale(1); }
+  50% { transform: translateY(-8px) rotate(3deg) scale(1.15); }
+}
+
+.captured-marker {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  overflow: hidden;
+  box-shadow: 0 0 14px rgba(184,134,11,0.6), 0 4px 8px rgba(0,0,0,0.6);
+  cursor: pointer;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.captured-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  object-position: center center;
+}
+.captured-marker-fallback {
+  width: 44px;
+  height: 44px;
+  background: var(--ink);
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(184,134,11,0.5), 0 4px 8px rgba(0,0,0,0.6);
+  cursor: pointer;
+}
+
+/* Player marker */
+.player-marker {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--moonlight) 0%, transparent 70%);
+  border: 2px solid var(--moonlight);
+  box-shadow: 0 0 16px var(--moonlight);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 16px var(--moonlight); }
+  50% { box-shadow: 0 0 28px var(--moonlight), 0 0 40px rgba(245,230,168,0.4); }
+}
+
+/* Range circle */
+.leaflet-interactive.range-circle {
+  animation: range-pulse 2s ease-in-out infinite;
+}
+@keyframes range-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(13,10,8,0.92);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(6px);
+}
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: var(--paper);
+  color: var(--ink);
+  max-width: 460px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.8);
+  border: 1px solid var(--vermilion-deep);
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(200,48,42,0.04) 0%, transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(184,134,11,0.04) 0%, transparent 40%);
+}
+
+.modal-close {
+  position: absolute;
+  top: 8px; right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-family: 'Shippori Mincho B1', serif;
+  width: 32px; height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { color: var(--vermilion); }
+
+/* Unseal animation */
+.unseal-stage {
+  position: relative;
+  height: 200px;
+  margin: 12px 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unseal-talisman {
+  width: 110px;
+  height: 150px;
+  background: linear-gradient(180deg, var(--vermilion) 0%, var(--vermilion-deep) 100%);
+  clip-path: polygon(50% 0%, 100% 8%, 100% 92%, 50% 100%, 0% 92%, 0% 8%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--paper-aged);
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 64px;
+  font-weight: 800;
+  box-shadow: 0 0 60px var(--vermilion), inset 0 0 20px rgba(0,0,0,0.4);
+  position: absolute;
+}
+.unseal-talisman.breaking {
+  animation: break-seal 1.2s forwards;
+}
+@keyframes break-seal {
+  0% { transform: scale(1) rotate(0); opacity: 1; }
+  20% { transform: scale(1.15) rotate(-3deg); }
+  40% { transform: scale(1.05) rotate(3deg); }
+  60% { transform: scale(1.3) rotate(-8deg); opacity: 1; filter: brightness(1.5); }
+  100% { transform: scale(2.5) rotate(15deg); opacity: 0; filter: brightness(2); }
+}
+
+.unseal-name {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--ink);
+  text-align: center;
+  letter-spacing: 0.1em;
+  opacity: 0;
+  transform: translateY(20px);
+}
+.unseal-name.appear {
+  animation: name-appear 1s 0.8s forwards;
+}
+@keyframes name-appear {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-headline {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 14px;
+  color: var(--vermilion);
+  letter-spacing: 0.3em;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.modal-name {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--ink);
+  text-align: center;
+  margin-bottom: 16px;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid rgba(26,20,16,0.2);
+  padding-bottom: 14px;
+}
+
+.modal-desc {
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--ink-soft);
+  margin: 16px 0 24px;
+  text-align: justify;
+}
+
+.modal-meta {
+  font-size: 11px;
+  color: var(--ink-soft);
+  opacity: 0.7;
+  text-align: center;
+  margin-bottom: 16px;
+  letter-spacing: 0.1em;
+}
+
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary:hover { background: var(--vermilion); }
+.btn-primary:disabled {
+  background: var(--ink-soft);
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* Collection title */
+.collection-title {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--vermilion);
+  letter-spacing: 0.3em;
+  text-align: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(26,20,16,0.15);
+}
+
+/* Collection grid */
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.collection-card {
+  aspect-ratio: 3 / 4;
+  border: 1px solid rgba(26,20,16,0.15);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--paper-aged);
+}
+.collection-card:hover { border-color: var(--vermilion); transform: translateY(-2px); }
+
+/* Captured card */
+.collection-card .ck-img {
+  flex: 1;
+  overflow: hidden;
+}
+.collection-card .ck-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.collection-card .ck-name {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+  padding: 6px 4px;
+  line-height: 1.3;
+  background: var(--paper-aged);
+}
+
+/* Locked card */
+.collection-card.locked {
+  background: var(--ink);
+  cursor: default;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.collection-card.locked .ck-glyph { font-size: 32px; color: var(--vermilion); }
+.collection-card.locked .ck-name { color: var(--paper-aged); letter-spacing: 0.4em; background: transparent; }
+.collection-card.locked .ck-dist { font-size: 9px; color: var(--paper-aged); opacity: 0.6; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  background: rgba(26,20,16,0.95);
+  color: var(--paper);
+  padding: 14px 22px;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--vermilion);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* Intro overlay */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #070506 url('assets/images/background.png') center center / cover no-repeat;
+}
+.intro.hide { animation: fade-out 0.7s forwards; }
+@keyframes fade-out { to { opacity: 0; pointer-events: none; } }
+
+/* 画像上の暗オーバーレイ — 中央テキスト周辺を読みやすく */
+.intro-fog {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(5,3,4,0.45) 0%, transparent 100%),
+    linear-gradient(to bottom, rgba(5,3,4,0.55) 0%, rgba(5,3,4,0.1) 30%, rgba(5,3,4,0.1) 70%, rgba(5,3,4,0.7) 100%);
+}
+
+/* コンテンツラッパー */
+.intro-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px;
+  text-align: center;
+  /* テキスト背景に薄い暗幕 */
+  background: radial-gradient(ellipse 90% 80% at 50% 50%, rgba(4,2,3,0.55) 0%, transparent 100%);
+}
+
+.intro-title {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--paper);
+  letter-spacing: 0.2em;
+  margin-bottom: 8px;
+  text-shadow:
+    0 0 40px rgba(200,48,42,0.6),
+    0 2px 12px rgba(0,0,0,0.9),
+    0 0 80px rgba(200,48,42,0.2);
+}
+.intro-title .red {
+  color: var(--vermilion);
+  text-shadow: 0 0 20px rgba(200,48,42,0.9), 0 0 60px rgba(200,48,42,0.4);
+  animation: flicker 4s ease-in-out infinite;
+}
+@keyframes flicker {
+  0%, 90%, 100% { opacity: 1; }
+  92%           { opacity: 0.7; }
+  94%           { opacity: 1; }
+  96%           { opacity: 0.5; }
+  98%           { opacity: 1; }
+}
+
+.intro-sub {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 12px;
+  color: var(--paper-aged);
+  letter-spacing: 0.5em;
+  margin-bottom: 36px;
+  opacity: 0.45;
+}
+
+.intro-text {
+  font-size: 13px;
+  line-height: 2.2;
+  color: rgba(232,220,192,0.85);
+  max-width: 300px;
+  margin-bottom: 32px;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+}
+.intro-text strong {
+  color: #d4a070;
+  font-weight: 600;
+  text-shadow: 0 0 12px rgba(180,100,40,0.6);
+}
+
+.intro-btn {
+  padding: 14px 36px;
+  background: transparent;
+  color: var(--paper);
+  border: 1px solid rgba(200,48,42,0.7);
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 14px;
+  letter-spacing: 0.4em;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(200,48,42,0.3), inset 0 0 20px rgba(200,48,42,0.05);
+  transition: all 0.3s;
+  animation: btn-pulse 3s ease-in-out infinite;
+}
+@keyframes btn-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(200,48,42,0.3), inset 0 0 20px rgba(200,48,42,0.05); }
+  50%       { box-shadow: 0 0 35px rgba(200,48,42,0.55), inset 0 0 30px rgba(200,48,42,0.1); }
+}
+.intro-btn:hover {
+  background: rgba(200,48,42,0.2);
+  border-color: var(--vermilion);
+  box-shadow: 0 0 40px rgba(200,48,42,0.6), inset 0 0 30px rgba(200,48,42,0.15);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .title { font-size: 16px; }
+  .stats { font-size: 11px; padding: 4px 9px; }
+  .float-btn { font-size: 11px; padding: 8px 11px; }
+  #btn-collection { top: 62px; right: 10px; }
+  #btn-locate { bottom: 70px; right: 10px; }
+  .modal { padding: 20px; }
+  .modal-name { font-size: 26px; }
+  .unseal-name { font-size: 36px; }
+  .unseal-talisman { width: 90px; height: 122px; font-size: 48px; }
+}
+
+/* Camera launch button (inside detail modal) */
+.btn-camera-launch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 13px;
+  background: transparent;
+  border: 1.5px solid var(--vermilion);
+  color: var(--vermilion);
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 14px;
+  letter-spacing: 0.25em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-camera-launch:hover, .btn-camera-launch:active {
+  background: var(--vermilion);
+  color: var(--paper);
+}
+.btn-camera-launch svg { flex-shrink: 0; }
+
+/* Camera modal (full-screen, no padding) */
+.camera-overlay {
+  padding: 0;
+  background: #000;
+  align-items: stretch;
+}
+
+.camera-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: #000;
+}
+
+.camera-close-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  font-size: 22px;
+  font-family: 'Shippori Mincho B1', serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  display: block;
+}
+
+.youkai-cam-overlay {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  filter: drop-shadow(0 0 14px rgba(140,60,220,0.75));
+  opacity: 0.92;
+  /* left / top / width are set by JS */
+}
+.youkai-cam-overlay:active { cursor: grabbing; }
+
+.camera-controls {
+  height: 116px;
+  background: rgba(0,0,0,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 44px;
+  flex-shrink: 0;
+}
+
+.shutter-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: 3px solid rgba(255,255,255,0.9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s;
+}
+.shutter-btn:active { transform: scale(0.9); }
+.shutter-inner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* Camera result overlay */
+.camera-result {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: #000;
+  flex-direction: column;
+  align-items: stretch;
+  z-index: 5;
+}
+.camera-result.show { display: flex; }
+
+.camera-result img {
+  flex: 1;
+  width: 100%;
+  object-fit: contain;
+  min-height: 0;
+}
+
+.result-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(0,0,0,0.88);
+  flex-shrink: 0;
+}
+
+.btn-result {
+  flex: 1;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-result.primary {
+  background: var(--vermilion);
+  border-color: var(--vermilion);
+}
+.btn-result:active { opacity: 0.8; }
+
+/* =============================================
+   Stamp Rally
+   ============================================= */
+
+/* HUD button */
+#btn-rally {
+  top: 70px;
+  left: 12px;
+  border-color: var(--vermilion);
+}
+#btn-rally.active {
+  background: var(--vermilion);
+  color: var(--paper);
+  border-color: var(--vermilion-deep);
+}
+
+/* Map marker — uncaptured rally yokai */
+.rally-marker {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--vermilion);
+  border: 3px solid rgba(255,110,110,0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  animation: rally-pulse 1.8s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(200,48,42,0.75);
+}
+@keyframes rally-pulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 10px rgba(200,48,42,0.7); }
+  50%       { transform: scale(1.12); box-shadow: 0 0 24px rgba(200,48,42,1); }
+}
+.rally-marker.in-range {
+  animation: rally-alert 0.45s ease-in-out infinite;
+}
+@keyframes rally-alert {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.22); box-shadow: 0 0 36px rgba(200,48,42,1); }
+}
+
+/* Map marker — captured rally yokai */
+.rally-captured-marker {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2.5px solid var(--vermilion);
+  overflow: hidden;
+  box-shadow: 0 0 14px rgba(200,48,42,0.65), 0 4px 8px rgba(0,0,0,0.6);
+  cursor: pointer;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rally-captured-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  object-position: center center;
+}
+.rally-captured-marker-fallback {
+  width: 44px;
+  height: 44px;
+  background: var(--ink);
+  border: 2.5px solid var(--vermilion);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vermilion);
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(200,48,42,0.5), 0 4px 8px rgba(0,0,0,0.6);
+  cursor: pointer;
+}
+
+/* Key input */
+.rally-key-input {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: var(--paper-aged);
+  border: 1.5px solid rgba(26,20,16,0.25);
+  color: var(--ink);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  outline: none;
+}
+.rally-key-input:focus { border-color: var(--vermilion); }
+
+.rally-entry-error {
+  color: var(--vermilion);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 10px;
+  min-height: 18px;
+  letter-spacing: 0.05em;
+}
+
+/* Rally progress */
+.rally-progress-line {
+  text-align: center;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+  letter-spacing: 0.1em;
+}
+.rally-progress-count {
+  color: var(--vermilion);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* Completion banner */
+.rally-complete-title {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--vermilion);
+  text-align: center;
+  letter-spacing: 0.35em;
+  margin-bottom: 8px;
+}
+.rally-complete-sub {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: center;
+  letter-spacing: 0.25em;
+  padding: 10px;
+  border: 1px solid var(--vermilion);
+  margin-bottom: 20px;
+}
+
+/* Rally stamp mark on captured card */
+.ck-stamp-overlay {
+  position: absolute;
+  bottom: 26px;
+  right: 4px;
+  font-size: 11px;
+  color: var(--vermilion);
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  pointer-events: none;
+}
+.collection-card { position: relative; }
+
+/* Exit button */
+.btn-exit-rally {
+  display: block;
+  width: 100%;
+  margin-top: 18px;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid rgba(26,20,16,0.18);
+  color: var(--ink-soft);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.2s;
+}
+.btn-exit-rally:hover { opacity: 1; }
+
+/* Leaflet overrides */
+.leaflet-container { background: #0d0a08; }
+.leaflet-popup-content-wrapper {
+  background: var(--paper);
+  border-radius: 0;
+  border: 1px solid var(--vermilion-deep);
+}

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>妖怪CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-title"><span style="color:var(--vermilion)">妖</span>怪 CMS</div>
+    <div class="login-sub">管理者専用</div>
+    <input type="password" id="key-input" placeholder="管理キーを入力" autocomplete="off">
+    <button class="btn-login" onclick="login()">ログイン</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app-screen">
+  <header>
+    <div class="header-title"><span>妖</span>怪 CMS</div>
+    <button class="btn-add" onclick="openForm(null)">＋ 新規追加</button>
+  </header>
+
+  <div class="toolbar">
+    <input type="search" id="search-input" placeholder="名前・IDで検索…" oninput="renderTable()">
+    <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">すべて</button>
+    <button class="filter-btn" data-filter="normal" onclick="setFilter('normal', this)">通常</button>
+    <button class="filter-btn" data-filter="rally" onclick="setFilter('rally', this)">ラリー</button>
+    <span class="count-label" id="count-label"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>画像</th>
+          <th>ID</th>
+          <th>名前</th>
+          <th>座標</th>
+          <th>種別</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr class="loading-row"><td colspan="6">読み込み中…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Edit / New modal -->
+<div class="modal-overlay" id="form-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeForm()">×</button>
+    <div class="modal-title" id="form-title">新規追加</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>妖怪ID</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="f-id" readonly style="flex:1;background:#f5ede0;color:#888;font-family:monospace;font-size:12px;">
+          <button type="button" class="btn-regen" id="btn-regen-id" onclick="regenId()" title="再生成">↺</button>
+        </div>
+        <span class="hint" id="f-id-hint">自動生成されます</span>
+      </div>
+      <div class="form-group">
+        <label>ラリーキー</label>
+        <input type="text" id="f-rally-key" placeholder="（通常妖怪は空欄）">
+      </div>
+      <div class="form-group">
+        <label>名前 *</label>
+        <input type="text" id="f-name" placeholder="山姥">
+      </div>
+      <div class="form-group">
+        <label>読み仮名</label>
+        <input type="text" id="f-kana" placeholder="やまうば">
+      </div>
+      <div class="form-group">
+        <label>緯度 *</label>
+        <input type="number" id="f-lat" placeholder="37.494" step="0.000001">
+      </div>
+      <div class="form-group">
+        <label>経度 *</label>
+        <input type="number" id="f-lon" placeholder="139.930" step="0.000001">
+      </div>
+      <div class="form-group full">
+        <label>説明文</label>
+        <textarea id="f-notes" placeholder="妖怪の説明…"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>出没場所・外見</label>
+        <textarea id="f-appearance" placeholder="出没場所や外見の特徴…"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>地域タグ（カンマ区切り）</label>
+        <input type="text" id="f-regions" placeholder="会津若松,東山温泉">
+      </div>
+      <div class="form-group full">
+        <label>カテゴリタグ（カンマ区切り）</label>
+        <input type="text" id="f-category-tags" placeholder="女性,山岳,妖怪">
+      </div>
+    </div>
+
+    <!-- Image upload -->
+    <div class="upload-section" style="margin-top:20px;">
+      <h4>妖怪画像（透過PNG推奨）</h4>
+      <div class="camera-preview" id="camera-preview"></div>
+      <div class="upload-row">
+        <input type="file" id="upload-file" accept="image/png,image/jpeg,image/webp">
+        <button class="btn-upload" id="btn-do-upload" onclick="uploadImage()">アップロード</button>
+      </div>
+      <div class="upload-progress" id="upload-progress"></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeForm()">キャンセル</button>
+      <button class="btn-save" id="btn-save" onclick="saveYoukai()">保 存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm delete -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title" style="color:var(--danger)">削 除 確 認</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeConfirm()">キャンセル</button>
+      <button class="btn-save" style="background:var(--danger);" id="btn-confirm-delete" onclick="doDelete()">削 除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
