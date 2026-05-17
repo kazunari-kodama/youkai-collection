@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>妖怪コレクション — 学術モード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Noto+Serif+JP:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="icon" type="image/png" href="assets/images/hitodama.png">
+<link rel="stylesheet" href="academic.css">
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="login-view">
+  <div class="login-bg"></div>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-title-main"><span class="accent">妖</span>怪コレクション</div>
+      <div class="login-title-sub">学 術 モ ー ド</div>
+      <div class="login-desc">プレミアム会員限定。妖怪伝承データを研究・閲覧できます。</div>
+    </div>
+    <div id="login-error" class="login-error" style="display:none;"></div>
+    <div class="login-form">
+      <label class="form-label">メールアドレス</label>
+      <input id="login-email" type="email" class="form-input" placeholder="example@mail.com" autocomplete="email">
+      <label class="form-label">パスワード</label>
+      <input id="login-password" type="password" class="form-input" placeholder="パスワード" autocomplete="current-password">
+      <button id="login-btn" class="login-btn" onclick="doLogin()">ログ イ ン</button>
+    </div>
+    <a href="index.html" class="back-link">← 通常モードに戻る</a>
+  </div>
+</div>
+
+<!-- 学術マップ画面 -->
+<div id="map-view" style="display:none;">
+  <!-- ヘッダー -->
+  <div class="ac-header">
+    <div class="ac-header-left">
+      <a href="index.html" class="ac-back-btn">← 通常モード</a>
+    </div>
+    <div class="ac-header-title">
+      <span class="accent">妖</span>怪コレクション &nbsp;<span class="ac-mode-badge">学術モード</span>
+    </div>
+    <div class="ac-header-right">
+      <span id="ac-count" class="ac-count-label">—</span>
+      <button class="ac-logout-btn" onclick="doLogout()">ログアウト</button>
+    </div>
+  </div>
+
+  <!-- 地図 -->
+  <div id="ac-map"></div>
+
+  <!-- カテゴリフィルター -->
+  <div class="ac-filter-bar" id="ac-filter-bar">
+    <button class="ac-filter-btn active" data-cat="" onclick="filterCategory(this, '')">すべて</button>
+  </div>
+
+  <!-- 詳細パネル -->
+  <div id="ac-detail" class="ac-detail" style="display:none;">
+    <button class="ac-detail-close" onclick="closeDetail()">×</button>
+    <div class="ac-detail-category" id="ac-detail-cat"></div>
+    <div class="ac-detail-name" id="ac-detail-name"></div>
+    <div class="ac-detail-region" id="ac-detail-region"></div>
+    <div class="ac-detail-coords" id="ac-detail-coords"></div>
+    <div class="ac-detail-divider"></div>
+    <div class="ac-detail-notes" id="ac-detail-notes"></div>
+    <div class="ac-detail-source" id="ac-detail-source"></div>
+    <div class="ac-detail-raw" id="ac-detail-raw-wrap" style="display:none;">
+      <button class="ac-raw-toggle" onclick="toggleRaw()">生データを表示 ▼</button>
+      <pre id="ac-detail-raw" style="display:none;"></pre>
+    </div>
+  </div>
+
+  <!-- ローディング -->
+  <div id="ac-loading" class="ac-loading">
+    <div class="ac-loading-spinner"></div>
+    <div>妖怪データを読み込んでいます…</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="config.js"></script>
+<script src="academic.js"></script>
+</body>
+</html>

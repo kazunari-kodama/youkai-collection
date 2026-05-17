@@ -1,0 +1,205 @@
+/* ============================================================
+   妖怪コレクション — 学術モード CSS
+   ============================================================ */
+
+:root {
+  --ac-bg:       #0d1117;
+  --ac-surface:  #161b22;
+  --ac-border:   #30363d;
+  --ac-text:     #e6edf3;
+  --ac-muted:    #8b949e;
+  --ac-accent:   #c0a060;
+  --ac-red:      #c9372b;
+  --ac-header-h: 52px;
+  --ac-filter-h: 44px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Serif JP', 'Shippori Mincho B1', serif; background: var(--ac-bg); color: var(--ac-text); height: 100dvh; overflow: hidden; }
+.accent { color: var(--ac-red); }
+
+/* ──────── ログイン画面 ──────── */
+#login-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  position: relative;
+}
+.login-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 60% 30%, #1a1000 0%, #0d1117 70%);
+}
+.login-card {
+  position: relative;
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-border);
+  border-radius: 12px;
+  padding: 40px 36px;
+  width: min(400px, 92vw);
+  box-shadow: 0 8px 40px rgba(0,0,0,.6);
+}
+.login-logo { text-align: center; margin-bottom: 28px; }
+.login-title-main { font-size: 22px; font-weight: 800; letter-spacing: .15em; }
+.login-title-sub  { font-size: 13px; letter-spacing: .4em; color: var(--ac-accent); margin-top: 6px; }
+.login-desc       { font-size: 11px; color: var(--ac-muted); margin-top: 12px; line-height: 1.6; }
+.login-error {
+  background: rgba(201,55,43,.15); border: 1px solid rgba(201,55,43,.4);
+  color: #ff8070; border-radius: 6px; padding: 10px 14px;
+  font-size: 12px; line-height: 1.5; margin-bottom: 16px; white-space: pre-wrap;
+}
+.form-label { display: block; font-size: 11px; letter-spacing: .1em; color: var(--ac-muted); margin-bottom: 5px; }
+.form-input {
+  display: block; width: 100%; background: var(--ac-bg);
+  border: 1px solid var(--ac-border); border-radius: 6px;
+  color: var(--ac-text); font-family: inherit; font-size: 14px;
+  padding: 10px 12px; margin-bottom: 16px; outline: none;
+  transition: border-color .2s;
+}
+.form-input:focus { border-color: var(--ac-accent); }
+.login-btn {
+  width: 100%; background: var(--ac-accent); color: #0d1117;
+  border: none; border-radius: 6px; font-family: inherit; font-size: 14px;
+  font-weight: 700; letter-spacing: .2em; padding: 12px;
+  cursor: pointer; transition: opacity .2s;
+}
+.login-btn:hover:not(:disabled) { opacity: .85; }
+.login-btn:disabled { opacity: .5; cursor: not-allowed; }
+.back-link {
+  display: block; text-align: center; margin-top: 20px;
+  font-size: 12px; color: var(--ac-muted); text-decoration: none; letter-spacing: .05em;
+}
+.back-link:hover { color: var(--ac-text); }
+
+/* ──────── 地図画面レイアウト ──────── */
+#map-view { display: flex; flex-direction: column; height: 100dvh; }
+
+.ac-header {
+  height: var(--ac-header-h);
+  background: var(--ac-surface);
+  border-bottom: 1px solid var(--ac-border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px; gap: 8px; flex-shrink: 0; z-index: 1000; position: relative;
+}
+.ac-header-left, .ac-header-right { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.ac-header-right { justify-content: flex-end; }
+.ac-header-title { font-size: 15px; font-weight: 700; letter-spacing: .1em; white-space: nowrap; }
+.ac-mode-badge {
+  font-size: 10px; letter-spacing: .15em; color: var(--ac-accent);
+  border: 1px solid var(--ac-accent); border-radius: 4px; padding: 2px 6px;
+  vertical-align: middle;
+}
+.ac-back-btn {
+  font-size: 12px; color: var(--ac-muted); text-decoration: none; letter-spacing: .05em;
+  padding: 4px 8px; border: 1px solid var(--ac-border); border-radius: 4px; white-space: nowrap;
+}
+.ac-back-btn:hover { color: var(--ac-text); border-color: var(--ac-muted); }
+.ac-count-label { font-size: 11px; color: var(--ac-muted); white-space: nowrap; }
+.ac-logout-btn {
+  font-size: 11px; color: var(--ac-muted); background: none;
+  border: 1px solid var(--ac-border); border-radius: 4px;
+  padding: 4px 8px; cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.ac-logout-btn:hover { color: var(--ac-text); border-color: var(--ac-muted); }
+
+/* フィルターバー */
+.ac-filter-bar {
+  height: var(--ac-filter-h);
+  background: var(--ac-surface);
+  border-bottom: 1px solid var(--ac-border);
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 10px; overflow-x: auto; flex-shrink: 0;
+}
+.ac-filter-bar::-webkit-scrollbar { height: 0; }
+.ac-filter-btn {
+  font-family: inherit; font-size: 11px; white-space: nowrap;
+  background: transparent; color: var(--ac-muted);
+  border: 1px solid var(--ac-border); border-radius: 20px;
+  padding: 4px 12px; cursor: pointer; flex-shrink: 0;
+  transition: all .15s;
+}
+.ac-filter-btn:hover   { border-color: var(--ac-muted); color: var(--ac-text); }
+.ac-filter-btn.active  { background: var(--cat-color, var(--ac-accent)); color: #0d1117; border-color: transparent; font-weight: 700; }
+
+/* 地図 */
+#ac-map {
+  flex: 1;
+  position: relative;
+}
+
+/* 詳細パネル */
+.ac-detail {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 900;
+  background: var(--ac-surface);
+  border-top: 2px solid var(--ac-border);
+  padding: 16px 18px 24px;
+  max-height: 55dvh;
+  overflow-y: auto;
+}
+@media (min-width: 640px) {
+  .ac-detail {
+    top: calc(var(--ac-header-h) + var(--ac-filter-h));
+    bottom: 0; left: auto; right: 0;
+    width: 320px; max-height: none;
+    border-top: none; border-left: 2px solid var(--ac-border);
+  }
+}
+.ac-detail-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; color: var(--ac-muted);
+  font-size: 20px; cursor: pointer; line-height: 1;
+}
+.ac-detail-category { font-size: 11px; letter-spacing: .2em; font-weight: 700; margin-bottom: 6px; }
+.ac-detail-name     { font-size: 20px; font-weight: 800; letter-spacing: .08em; margin-bottom: 6px; }
+.ac-detail-region   { font-size: 12px; color: var(--ac-muted); margin-bottom: 4px; }
+.ac-detail-coords   {
+  font-size: 11px; color: var(--ac-accent); cursor: pointer;
+  font-family: monospace; margin-bottom: 2px; text-decoration: underline dotted;
+}
+.ac-detail-divider  { border: none; border-top: 1px solid var(--ac-border); margin: 12px 0; }
+.ac-detail-notes    { font-size: 13px; line-height: 1.7; color: var(--ac-text); margin-bottom: 10px; }
+.ac-detail-source   { margin-bottom: 10px; }
+.ac-badge {
+  display: inline-block; font-size: 10px; letter-spacing: .1em;
+  border: 1px solid var(--ac-border); border-radius: 4px;
+  padding: 2px 7px; margin-right: 5px; color: var(--ac-muted);
+}
+.ac-raw-toggle {
+  font-size: 11px; color: var(--ac-muted); background: none; border: none;
+  cursor: pointer; font-family: inherit; padding: 0; letter-spacing: .05em;
+}
+#ac-detail-raw {
+  font-family: monospace; font-size: 11px; color: var(--ac-muted);
+  background: var(--ac-bg); border: 1px solid var(--ac-border);
+  border-radius: 4px; padding: 10px; margin-top: 8px;
+  white-space: pre-wrap; word-break: break-all;
+}
+
+/* ローディング */
+.ac-loading {
+  position: absolute;
+  top: calc(var(--ac-header-h) + var(--ac-filter-h)); left: 0; right: 0; bottom: 0;
+  z-index: 800;
+  background: rgba(13,17,23,.85);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  font-size: 14px; color: var(--ac-muted); letter-spacing: .1em;
+}
+.ac-loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--ac-border);
+  border-top-color: var(--ac-accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Leaflet override */
+.leaflet-container { background: #111; }
+.leaflet-popup-content-wrapper {
+  background: var(--ac-surface); color: var(--ac-text);
+  border: 1px solid var(--ac-border); border-radius: 6px;
+}
+.leaflet-popup-tip { background: var(--ac-surface); }

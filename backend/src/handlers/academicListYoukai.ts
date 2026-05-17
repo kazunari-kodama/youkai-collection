@@ -18,7 +18,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   const limitParam = event.queryStringParameters?.limit;
-  const limit = limitParam ? Math.min(parseInt(limitParam, 10), 200) : 100;
+  const limit = limitParam ? Math.min(parseInt(limitParam, 10), 500) : 200;
 
   const result = await ddb.send(
     new QueryCommand({
