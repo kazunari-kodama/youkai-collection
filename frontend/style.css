@@ -773,6 +773,16 @@ html, body {
    Stamp Rally
    ============================================= */
 
+/* 学術モードボタン: 図鑑ボタン(top:70px)の直下 */
+#btn-academic {
+  top: 120px;
+  right: 12px;
+  text-decoration: none;
+}
+@media (max-width: 480px) {
+  #btn-academic { top: 110px; right: 10px; }
+}
+
 /* HUD button */
 #btn-rally {
   top: 70px;
