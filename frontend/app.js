@@ -133,14 +133,18 @@ function initMap() {
 }
 
 function capturedMarkerHtml(youkai, actionType) {
-  const ring = actionType === 'bond' ? 'bond' : 'seal';
+  const isBond = actionType === 'bond';
+  const border  = isBond ? '#9b59f0' : '#c8302a';
+  const glow    = isBond ? 'rgba(107,47,160,0.7)' : 'rgba(200,48,42,0.7)';
+  const ringStyle = `border-color:${border};box-shadow:0 0 14px ${glow},0 4px 8px rgba(0,0,0,0.6)`;
+  const ring = isBond ? 'bond' : 'seal';
   if (youkai.camera_url) {
-    return `<div class="captured-marker ${ring}" data-id="${youkai.id}">` +
+    return `<div class="captured-marker ${ring}" style="${ringStyle}" data-id="${youkai.id}">` +
       `<img src="${youkai.camera_url}" alt="${youkai.name}" ` +
-      `onerror="this.parentElement.className='captured-marker-fallback ${ring}';this.remove();this.parentElement.textContent='${youkai.name.charAt(0)}'">` +
+      `onerror="this.parentElement.className='captured-marker-fallback ${ring}';this.parentElement.style='${ringStyle}';this.remove();this.parentElement.textContent='${youkai.name.charAt(0)}'">` +
       `</div>`;
   }
-  return `<div class="captured-marker-fallback ${ring}" data-id="${youkai.id}">${youkai.name.charAt(0)}</div>`;
+  return `<div class="captured-marker-fallback ${ring}" style="${ringStyle}" data-id="${youkai.id}">${youkai.name.charAt(0)}</div>`;
 }
 
 function addYoukaiMarker(youkai) {
