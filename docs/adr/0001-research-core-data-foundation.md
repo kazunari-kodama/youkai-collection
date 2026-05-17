@@ -1,6 +1,6 @@
 # ADR-0001: データ基盤再設計 — research / core 二段テーブル
 
-- **Status:** Draft
+- **Status:** Accepted
 - **Date:** 2026-05-17
 - **Jira:** KDM-99
 - **Deciders:** 合同会社妖怪屋
@@ -99,7 +99,7 @@
 | `latitude` | N | ✅ | 配置座標（緯度） |
 | `longitude` | N | ✅ | 配置座標（経度） |
 | `require_qr` | BOOL | ✅ | QRコード捕獲フラグ（2026-05 追加済み） |
-| `published` | BOOL | 🆕 | `false` = 非公開（管理用ドラフト扱い） |
+| `published` | BOOL | 🆕 | `true` = 承認と同時に即公開（promote 時に自動セット） |
 | `research_ids` | L | 🆕 | 参照元 `research_id` リスト（トレーサビリティ） |
 | `created_at` | S | 🆕 | ISO 8601 |
 | `updated_at` | S | 🆕 | ISO 8601 |
@@ -139,9 +139,10 @@ location 検索（lat/lon）は件数増加時に geohash GSI を検討する。
 
 [学芸員]
   POST /research/{id}/promote
-    →  youkai_core に PutItem（yokai_id 新規発行）
+    →  youkai_core に PutItem（yokai_id 新規発行、published=true）
     →  research.status = approved
     →  research.promoted_to = yokai_id
+    →  承認と同時に即ゲーム公開
 
   or
 
