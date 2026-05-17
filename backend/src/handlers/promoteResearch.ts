@@ -68,6 +68,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (current.Item.raw_content) coreItem.raw_content = current.Item.raw_content;
   if (current.Item.reliability_score != null) coreItem.reliability_score = current.Item.reliability_score;
   if (current.Item.originality_score != null) coreItem.originality_score = current.Item.originality_score;
+  if (current.Item.latitude != null) coreItem.latitude = current.Item.latitude;
+  if (current.Item.longitude != null) coreItem.longitude = current.Item.longitude;
   if (current.Item.media_attachments) coreItem.images = current.Item.media_attachments;
 
   await ddb.send(new PutCommand({ TableName: CORE_TABLE, Item: coreItem }));

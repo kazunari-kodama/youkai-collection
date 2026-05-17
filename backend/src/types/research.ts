@@ -13,6 +13,8 @@ export interface ResearchDBItem {
   originality_score?: number;
   collector_id: string;
   collected_at: string;
+  latitude?: number;
+  longitude?: number;
   reviewed_by?: string;
   reviewed_at?: string;
   review_notes?: string;
