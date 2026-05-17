@@ -37,8 +37,61 @@ Resources:
       StageName: prod
       Cors:
         AllowMethods: "'GET,POST,PATCH,DELETE,OPTIONS'"
-        AllowHeaders: "'Content-Type,X-Admin-Key,X-System-Key'"
+        AllowHeaders: "'Content-Type,X-Admin-Key,X-System-Key,Authorization'"
         AllowOrigin: "'*'"
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt YokaiUserPool.Arn
+            Identity:
+              Header: Authorization
+
+  # Cognito User Pool
+  YokaiUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-users'
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+
+  YokaiUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${AWS::StackName}-web-client'
+      UserPoolId: !Ref YokaiUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  YokaiPremiumGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: premium
+      UserPoolId: !Ref YokaiUserPool
+      Description: Premium subscribers with academic mode access
 
   # Research Table (youkai_research)
   YoukaiResearchTable:
@@ -586,6 +639,68 @@ Resources:
             Path: /core/{id}
             Method: GET
 
+  # Lambda: GET /academic/youkai
+  AcademicListYokaiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/academicListYoukai.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/academicListYoukai.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !GetAtt YoukaiCoreTable.Arn
+                - !Sub '${YoukaiCoreTable.Arn}/index/*'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /academic/youkai
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  # Lambda: GET /academic/youkai/{id}
+  AcademicGetYokaiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/academicGetYoukai.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/academicGetYoukai.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt YoukaiCoreTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /academic/youkai/{id}
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+
   # Images CloudFront (youkai-collection-images bucket)
   ImagesOAC:
     Type: AWS::CloudFront::OriginAccessControl
@@ -681,6 +796,18 @@ Resources:
             ResponsePagePath: /index.html
 
 Outputs:
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref YokaiUserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref YokaiUserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
+
   ApiEndpoint:
     Description: API Gateway endpoint URL
     Value: !Sub 'https://${YokaiApi}.execute-api.${AWS::Region}.amazonaws.com/prod'

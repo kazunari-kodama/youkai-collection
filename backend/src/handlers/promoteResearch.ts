@@ -48,6 +48,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       : randomUUID();
 
   // Write to youkai_core — published="true" enables GSI lookup
+  const gameVisible =
+    typeof body.game_visible === 'boolean'
+      ? body.game_visible
+      : body.game_visible === 'true';
+
   const coreItem: Record<string, unknown> = {
     yokai_id,
     published: 'true',
@@ -55,6 +60,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     updated_at: now,
     name: current.Item.yokai_name,
     source_research_id: research_id,
+    ...(gameVisible ? { game_visible: 'true' } : {}),
   };
   if (current.Item.summary) coreItem.notes = current.Item.summary;
   if (current.Item.source_url) coreItem.source_url = current.Item.source_url;
