@@ -59,6 +59,7 @@
     <div class="stats">
       <span class="num" id="stat-captured">0</span> / <span id="stat-total">0</span> 体
     </div>
+    <button class="faction-badge" id="faction-badge" onclick="showFactionModal()"></button>
   </div>
 </div>
 
@@ -87,7 +88,7 @@
 <div class="modal-overlay" id="unseal-modal">
   <div class="modal">
     <button class="modal-close" onclick="closeUnseal()">×</button>
-    <div class="modal-headline">封 印 解 除</div>
+    <div class="modal-headline" id="unseal-headline">封 印 解 除</div>
     <div class="unseal-stage">
       <div class="unseal-talisman" id="unseal-talisman">封</div>
       <div class="unseal-name" id="unseal-name"></div>
@@ -190,6 +191,27 @@
     </div>
     <div class="qr-hint">QRコードを枠内に合わせてください</div>
     <div class="qr-status" id="qr-status"></div>
+  </div>
+</div>
+
+<!-- Faction selection modal -->
+<div class="modal-overlay" id="faction-modal">
+  <div class="modal faction-modal">
+    <div class="modal-headline">陣 営 選 択</div>
+    <div class="faction-modal-sub">あなたはどちらの立場で妖怪と向き合いますか？</div>
+    <div class="faction-cards">
+      <button class="faction-card faction-exorcist" onclick="chooseFaction('exorcist')">
+        <div class="faction-emblem">御</div>
+        <div class="faction-name">祓 い 手 陣 営</div>
+        <div class="faction-desc">妖怪を封じ、図鑑に記録する。伝統的な退魔の道。</div>
+      </button>
+      <button class="faction-card faction-supernatural" onclick="chooseFaction('supernatural')">
+        <div class="faction-emblem">召</div>
+        <div class="faction-name">超 自 然 派</div>
+        <div class="faction-desc">妖怪を解放し、共存の道を探る。新たな時代の選択。</div>
+      </button>
+    </div>
+    <button class="btn-skip-faction" onclick="chooseFaction('exorcist')">あとで決める（祓い手として続ける）</button>
   </div>
 </div>
 

@@ -57,4 +57,7 @@ export interface CaptureDBItem {
   capturedAt: string;
   userLat: number;
   userLon: number;
+  actionType: 'seal' | 'release' | 'bond';
+  faction: 'exorcist' | 'supernatural';
+  rally_key?: string;
 }

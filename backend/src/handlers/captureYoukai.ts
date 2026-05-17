@@ -11,6 +11,9 @@ const HEADERS = {
   'Access-Control-Allow-Origin': '*',
 };
 
+type ActionType = 'seal' | 'release' | 'bond';
+type Faction    = 'exorcist' | 'supernatural';
+
 interface CaptureRequest {
   deviceId: string;
   youkaiId: string;
@@ -18,6 +21,8 @@ interface CaptureRequest {
   userLon: number;
   rallyKey?: string;
   qrCode?: string;
+  actionType?: ActionType;
+  faction?: Faction;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -71,6 +76,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     capturedAt: new Date().toISOString(),
     userLat,
     userLon,
+    actionType: body.actionType ?? 'seal',
+    faction:    body.faction    ?? 'exorcist',
   };
   if (body.rallyKey) captureItem.rally_key = body.rallyKey;
 

@@ -46,6 +46,9 @@ const state = {
   pendingQrCode: null,  // string | null
 };
 
+const FACTION_KEY = 'yokai_faction';
+let currentFaction = localStorage.getItem(FACTION_KEY) || null;
+
 let map, playerMarker, rangeCircle;
 let youkaiMarkers = {};  // id -> { marker, data }
 
@@ -319,6 +322,11 @@ async function triggerUnseal(youkaiId) {
   talisman.classList.remove('breaking');
   nameEl.classList.remove('appear');
 
+  const isSupernatural = currentFaction === 'supernatural';
+  document.getElementById('unseal-headline').textContent = isSupernatural ? '妖 怪 共 存' : '封 印 解 除';
+  talisman.textContent = isSupernatural ? '召' : '封';
+  talisman.classList.toggle('supernatural', isSupernatural);
+
   document.getElementById('unseal-name').textContent = detail.name;
   document.getElementById('unseal-desc').textContent = detail.notes || detail.appearance || '(伝承不明)';
   document.getElementById('unseal-meta').textContent =
@@ -326,7 +334,7 @@ async function triggerUnseal(youkaiId) {
 
   const btn = document.getElementById('btn-confirm-capture');
   btn.disabled = false;
-  btn.textContent = '図 鑑 に 封 じ る';
+  btn.textContent = isSupernatural ? '共 存 の 契 り を 結 ぶ' : '図 鑑 に 封 じ る';
 
   document.getElementById('unseal-modal').classList.add('show');
 
@@ -345,15 +353,18 @@ async function confirmCapture() {
     return;
   }
 
+  const isSupernatural = currentFaction === 'supernatural';
   const btn = document.getElementById('btn-confirm-capture');
   btn.disabled = true;
-  btn.textContent = '封じ込め中…';
+  btn.textContent = isSupernatural ? '契り結び中…' : '封じ込め中…';
 
   const captureBody = {
     deviceId: DEVICE_ID,
     youkaiId: detail.id,
     userLat: state.playerPos.lat,
     userLon: state.playerPos.lon,
+    actionType: isSupernatural ? 'bond' : 'seal',
+    faction: currentFaction ?? 'exorcist',
   };
   if (detail.rally_key) captureBody.rallyKey = detail.rally_key;
   if (state.pendingQrCode) captureBody.qrCode = state.pendingQrCode;
@@ -362,7 +373,7 @@ async function confirmCapture() {
 
   if (!result.ok) {
     btn.disabled = false;
-    btn.textContent = '図 鑑 に 封 じ る';
+    btn.textContent = isSupernatural ? '共 存 の 契 り を 結 ぶ' : '図 鑑 に 封 じ る';
     if (result.status === 403) {
       showToast('位置が離れすぎています');
     } else {
@@ -389,7 +400,9 @@ async function confirmCapture() {
     showToast('スタンプコンプリート！受付に図鑑を提示してください');
     setTimeout(() => openRallyCollection(), 1200);
   } else {
-    showToast(`「${detail.name}」を図鑑に封じた`);
+    showToast(isSupernatural
+      ? `「${detail.name}」と共存の契りを結んだ`
+      : `「${detail.name}」を図鑑に封じた`);
   }
 }
 
@@ -819,6 +832,31 @@ function waitForLeaflet(callback, attempt = 0) {
   setTimeout(() => waitForLeaflet(callback, attempt + 1), 100);
 }
 
+// --- Faction management ----------------------------------------
+function updateFactionHUD() {
+  const badge = document.getElementById('faction-badge');
+  if (!badge) return;
+  if (currentFaction === 'supernatural') {
+    badge.textContent = '超自然派';
+    badge.className = 'faction-badge supernatural';
+  } else {
+    badge.textContent = '祓い手';
+    badge.className = 'faction-badge exorcist';
+  }
+}
+
+function showFactionModal() {
+  document.getElementById('faction-modal').classList.add('show');
+}
+
+function chooseFaction(f) {
+  currentFaction = f;
+  localStorage.setItem(FACTION_KEY, f);
+  document.getElementById('faction-modal').classList.remove('show');
+  updateFactionHUD();
+  showToast(f === 'supernatural' ? '超自然派として歩む道を選んだ' : '祓い手として封印の道を歩む');
+}
+
 async function dismissIntro() {
   document.getElementById('intro').classList.add('hide');
   setTimeout(async () => {
@@ -830,6 +868,7 @@ async function dismissIntro() {
       startGeolocation();
       await restoreRallyFromStorage();
     });
+    if (!currentFaction) showFactionModal();
   }, 600);
 }
 
@@ -1091,6 +1130,8 @@ function closeQrScanner() {
   _qrTargetId = null;
   document.getElementById('qr-modal').classList.remove('show');
 }
+
+updateFactionHUD();
 
 // モーダル背景クリックで閉じる
 document.querySelectorAll('.modal-overlay').forEach((m) => {

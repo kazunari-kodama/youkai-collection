@@ -1009,6 +1009,126 @@ html, body {
   background: rgba(0,0,0,0.9);
 }
 
+/* ── Faction ────────────────────────────────────────────── */
+
+/* HUD badge */
+.faction-badge {
+  padding: 4px 10px;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  border: 1px solid rgba(200,48,42,0.5);
+  border-radius: 2px;
+  background: rgba(26,20,16,0.75);
+  color: var(--paper-aged);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: border-color 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+.faction-badge.exorcist {
+  border-color: var(--vermilion);
+  color: var(--vermilion);
+}
+.faction-badge.supernatural {
+  border-color: #9b59f0;
+  color: #c49ef8;
+}
+
+/* Faction selection modal */
+.faction-modal {
+  max-width: 360px;
+  padding-bottom: 28px;
+}
+.faction-modal-sub {
+  font-size: 12px;
+  color: var(--paper-aged);
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin: -4px 0 20px;
+  opacity: 0.8;
+}
+.faction-cards {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.faction-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 10px 16px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background: rgba(26,20,16,0.6);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.faction-card:active { opacity: 0.75; }
+.faction-exorcist {
+  border-color: rgba(200,48,42,0.5);
+}
+.faction-exorcist:hover, .faction-exorcist:focus {
+  border-color: var(--vermilion);
+  background: rgba(200,48,42,0.12);
+}
+.faction-supernatural {
+  border-color: rgba(107,47,160,0.5);
+}
+.faction-supernatural:hover, .faction-supernatural:focus {
+  border-color: #9b59f0;
+  background: rgba(107,47,160,0.15);
+}
+.faction-emblem {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+}
+.faction-exorcist .faction-emblem { color: var(--vermilion); }
+.faction-supernatural .faction-emblem { color: #9b59f0; }
+.faction-name {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--paper);
+}
+.faction-desc {
+  font-size: 11px;
+  color: var(--paper-aged);
+  letter-spacing: 0.05em;
+  line-height: 1.5;
+  text-align: center;
+  opacity: 0.85;
+}
+.btn-skip-faction {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--paper-aged);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+  cursor: pointer;
+  padding: 4px 0;
+  text-align: center;
+}
+.btn-skip-faction:hover { opacity: 0.8; }
+
+/* Supernatural talisman variant */
+.unseal-talisman.supernatural {
+  background: linear-gradient(180deg, #6b2fa0 0%, #3d1a5c 100%);
+  box-shadow: 0 0 60px rgba(107,47,160,0.9), inset 0 0 30px rgba(0,0,0,0.4);
+  border-color: rgba(155,89,240,0.4);
+  color: #e8d8ff;
+  text-shadow: 0 0 20px rgba(155,89,240,0.8);
+}
+
 /* Leaflet overrides */
 .leaflet-container { background: #0d0a08; }
 .leaflet-top.leaflet-left .leaflet-control-zoom { margin-top: 120px; }
