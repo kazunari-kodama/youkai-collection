@@ -77,6 +77,34 @@ Resources:
           Projection:
             ProjectionType: ALL
 
+  # Core Table (youkai_core) — 配信用確定データ、kodama_db の後継
+  YoukaiCoreTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai_core
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: yokai_id
+          AttributeType: S
+        - AttributeName: published
+          AttributeType: S
+        - AttributeName: updated_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: yokai_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: published-updated_at-index
+          KeySchema:
+            - AttributeName: published
+              KeyType: HASH
+            - AttributeName: updated_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
   # Captures Table (new)
   CapturesTable:
     Type: AWS::DynamoDB::Table
