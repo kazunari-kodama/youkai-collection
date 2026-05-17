@@ -38,6 +38,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (typeof body.latitude === 'number') item.latitude = body.latitude;
   if (typeof body.longitude === 'number') item.longitude = body.longitude;
   if (body.night_only === true) item.night_only = true;
+  if (body.require_qr === true) item.require_qr = true;
 
   const arrayFields = ['images', 'image_types', 'image_captions', 'regions', 'category_tags', 'keywords'] as const;
   for (const f of arrayFields) {

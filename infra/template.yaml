@@ -307,6 +307,35 @@ Resources:
             Path: /admin/youkai/{id}
             Method: DELETE
 
+  # Lambda: DELETE /collection (debug only)
+  DebugClearCollectionFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/debugClearCollection.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/debugClearCollection.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+                - dynamodb:BatchWriteItem
+              Resource: !GetAtt CapturesTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /collection
+            Method: DELETE
+
   # Lambda: POST /admin/upload-url
   AdminUploadUrlFunction:
     Type: AWS::Serverless::Function

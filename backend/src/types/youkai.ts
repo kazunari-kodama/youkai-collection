@@ -16,6 +16,7 @@ export interface YokaiDBItem {
   keywords?: string[];
   rally_key?: string;
   night_only?: boolean;
+  require_qr?: boolean;
 }
 
 /** GET /youkai レスポンスの1件 */
@@ -27,6 +28,7 @@ export interface YokaiListItem {
   icon_url: string;
   camera_url: string;
   night_only?: boolean;
+  require_qr?: boolean;
 }
 
 /** GET /youkai/{id} レスポンス */
@@ -45,6 +47,7 @@ export interface YokaiDetail {
   category_tags: string[];
   keywords: string[];
   rally_key?: string;
+  require_qr?: boolean;
 }
 
 /** youkai-captures テーブルの1レコード */

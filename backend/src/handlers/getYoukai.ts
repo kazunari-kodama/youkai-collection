@@ -45,6 +45,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     category_tags: item.category_tags ?? [],
     keywords: item.keywords ?? [],
     ...(item.rally_key ? { rally_key: item.rally_key } : {}),
+    ...(item.require_qr ? { require_qr: true } : {}),
   };
 
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify(detail) };

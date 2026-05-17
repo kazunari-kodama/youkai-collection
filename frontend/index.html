@@ -2,6 +2,16 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<!-- OGP -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.youkai-collection.jp/">
+<meta property="og:title" content="妖怪コレクション">
+<meta property="og:description" content="街を歩いて妖怪を集めよう。気づかれぬまま、奴らはすぐそこにいる。位置情報を使ったリアル妖怪図鑑アプリ。">
+<meta property="og:image" content="https://www.youkai-collection.jp/assets/images/background_ogp.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="妖怪コレクション">
+<meta name="twitter:description" content="街を歩いて妖怪を集めよう。気づかれぬまま、奴らはすぐそこにいる。位置情報を使ったリアル妖怪図鑑アプリ。">
+<meta name="twitter:image" content="https://www.youkai-collection.jp/assets/images/background_ogp.png">
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-SXLDNZZKSF"></script>
 <script>
@@ -60,6 +70,9 @@
 </button>
 <button class="float-btn" id="btn-debug" onclick="toggleDebug()">
   デバッグ: <span id="debug-state">OFF</span>
+</button>
+<button class="float-btn" id="btn-clear-collection" onclick="clearCollection()" style="display:none;">
+  🗑️ 図鑑クリア
 </button>
 <button class="float-btn" id="btn-rally" onclick="openRallyEntry()">
   <span class="icon">📛</span><span id="rally-btn-label">スタンプラリー</span>
@@ -163,10 +176,25 @@
   </div>
 </div>
 
+<!-- QR Scanner modal -->
+<div class="modal-overlay" id="qr-modal">
+  <div class="qr-container">
+    <button class="camera-close-btn" onclick="closeQrScanner()">×</button>
+    <div class="qr-stage">
+      <video id="qr-video" playsinline autoplay muted></video>
+      <canvas id="qr-canvas" style="display:none;"></canvas>
+      <div class="qr-frame"></div>
+    </div>
+    <div class="qr-hint">QRコードを枠内に合わせてください</div>
+    <div class="qr-status" id="qr-status"></div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>

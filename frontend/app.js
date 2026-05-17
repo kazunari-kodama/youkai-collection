@@ -15,10 +15,12 @@ function getDeviceId() {
 }
 
 const DEVICE_ID = getDeviceId();
-const CAPTURE_RADIUS_M = 20;
+const CAPTURE_RADIUS_M = 13;
+const IS_QR_TEST = new URLSearchParams(location.search).get('qr') === '1';
 
-// デバッグボタンは dev 環境のみ表示
+// デバッグ専用ボタンは dev 環境のみ表示
 document.getElementById('btn-debug').style.display = IS_DEV ? '' : 'none';
+document.getElementById('btn-clear-collection').style.display = IS_DEV ? '' : 'none';
 const AIZU_CASTLE = { lat: 37.4946, lon: 139.9293 };
 const TOKYO_STATION = { lat: 35.6812, lon: 139.7671 };
 
@@ -41,6 +43,7 @@ const state = {
   initialCentered: false,
   pendingUnseal: null,  // YokaiDetail
   currentDetail: null,  // YokaiDetail
+  pendingQrCode: null,  // string | null
 };
 
 let map, playerMarker, rangeCircle;
@@ -170,7 +173,12 @@ async function handleMarkerTap(youkai) {
   }
   const d = distanceMeters(state.playerPos.lat, state.playerPos.lon, youkai.lat, youkai.lon);
   if (d <= CAPTURE_RADIUS_M) {
-    await triggerUnseal(youkai.id);
+    if (youkai.require_qr && (!state.debugMode || IS_QR_TEST)) {
+      openQrScanner(youkai.id);
+    } else {
+      if (youkai.require_qr) state.pendingQrCode = youkai.id;
+      await triggerUnseal(youkai.id);
+    }
   } else {
     showToast(`封印まで残り ${Math.round(d)}m`);
   }
@@ -215,7 +223,10 @@ function updatePlayerPosition(lat, lon) {
     if (!sealEl) return;
     if (d <= CAPTURE_RADIUS_M) {
       sealEl.classList.add('in-range');
-      if (!isAnyModalOpen()) triggerUnseal(data.id);
+      if (!isAnyModalOpen() && (!data.require_qr || (state.debugMode && !IS_QR_TEST))) {
+        if (data.require_qr) state.pendingQrCode = data.id;
+        triggerUnseal(data.id);
+      }
     } else {
       sealEl.classList.remove('in-range');
     }
@@ -232,7 +243,10 @@ function updatePlayerPosition(lat, lon) {
       if (!sealEl) return;
       if (d <= CAPTURE_RADIUS_M) {
         sealEl.classList.add('in-range');
-        if (!isAnyModalOpen()) triggerUnseal(data.id);
+        if (!isAnyModalOpen() && (!data.require_qr || (state.debugMode && !IS_QR_TEST))) {
+          if (data.require_qr) state.pendingQrCode = data.id;
+          triggerUnseal(data.id);
+        }
       } else {
         sealEl.classList.remove('in-range');
       }
@@ -342,6 +356,7 @@ async function confirmCapture() {
     userLon: state.playerPos.lon,
   };
   if (detail.rally_key) captureBody.rallyKey = detail.rally_key;
+  if (state.pendingQrCode) captureBody.qrCode = state.pendingQrCode;
 
   const result = await apiPost('/capture', captureBody);
 
@@ -381,6 +396,7 @@ async function confirmCapture() {
 function closeUnseal() {
   document.getElementById('unseal-modal').classList.remove('show');
   state.pendingUnseal = null;
+  state.pendingQrCode = null;
 }
 
 // --- Detail modal -------------------------------------------
@@ -398,8 +414,10 @@ async function showDetail(youkaiId) {
   document.getElementById('detail-name').textContent = detail.name;
   document.getElementById('detail-desc').textContent =
     detail.notes || detail.appearance || '(伝承不明)';
-  document.getElementById('detail-meta').textContent =
-    `北緯 ${detail.lat.toFixed(5)}  東経 ${detail.lon.toFixed(5)}`;
+  const metaEl = document.getElementById('detail-meta');
+  metaEl.textContent = `北緯 ${detail.lat.toFixed(5)}  東経 ${detail.lon.toFixed(5)}`;
+  metaEl.style.cursor = 'pointer';
+  metaEl.onclick = () => { closeDetail(); map.flyTo([detail.lat, detail.lon], 17); };
 
   const img = document.getElementById('detail-img');
   if (detail.camera_url) {
@@ -769,6 +787,32 @@ function toggleDebug() {
   }
 }
 
+async function clearCollection() {
+  if (!confirm('図鑑データをすべてクリアしますか？\n（この操作はサーバーのデータも削除します）')) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/collection?deviceId=${encodeURIComponent(DEVICE_ID)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { deleted } = await res.json();
+    capturedIds = new Set();
+    rallyState.capturedIds = new Set();
+    // マーカーを未捕獲状態に更新
+    Object.values(youkaiMarkers).forEach(({ marker, data }) => {
+      const el = marker.getElement();
+      if (el) el.classList.remove('captured');
+    });
+    Object.values(rallyMarkers).forEach(({ marker }) => {
+      const el = marker.getElement();
+      if (el) el.classList.remove('captured');
+    });
+    document.getElementById('stat-captured').textContent = '0';
+    showToast(`図鑑クリア完了 (${deleted}件削除)`);
+  } catch (e) {
+    showToast('クリアに失敗しました: ' + e.message, true);
+  }
+}
+
 function waitForLeaflet(callback, attempt = 0) {
   if (typeof L !== 'undefined' && L.map) { callback(); return; }
   if (attempt > 100) { setStatus('Leaflet読込失敗'); return; }
@@ -833,7 +877,12 @@ async function handleRallyMarkerTap(youkai) {
   if (!state.playerPos) { showToast('まず現在地を取得してください'); return; }
   const d = distanceMeters(state.playerPos.lat, state.playerPos.lon, youkai.lat, youkai.lon);
   if (d <= CAPTURE_RADIUS_M) {
-    await triggerUnseal(youkai.id);
+    if (youkai.require_qr && (!state.debugMode || IS_QR_TEST)) {
+      openQrScanner(youkai.id);
+    } else {
+      if (youkai.require_qr) state.pendingQrCode = youkai.id;
+      await triggerUnseal(youkai.id);
+    }
   } else {
     showToast(`封印まで残り ${Math.round(d)}m`);
   }
@@ -977,9 +1026,78 @@ function _releaseWakeLock() {
   _wakeLock = null;
 }
 
+// --- QR Scanner ------------------------------------------------
+let _qrStream = null;
+let _qrTargetId = null;
+let _qrAnimFrame = null;
+
+function openQrScanner(youkaiId) {
+  _qrTargetId = youkaiId;
+  document.getElementById('qr-status').textContent = '';
+  document.getElementById('qr-modal').classList.add('show');
+  _startQrCamera();
+}
+
+async function _startQrCamera() {
+  try {
+    _qrStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    if (!_qrTargetId) { _qrStream.getTracks().forEach((t) => t.stop()); _qrStream = null; return; }
+    const video = document.getElementById('qr-video');
+    video.srcObject = _qrStream;
+    await video.play();
+    _qrAnimFrame = requestAnimationFrame(_scanQrFrame);
+  } catch {
+    showToast('カメラの起動に失敗しました');
+    closeQrScanner();
+  }
+}
+
+function _scanQrFrame() {
+  if (!_qrTargetId) return;
+  const video = document.getElementById('qr-video');
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    const canvas = document.getElementById('qr-canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+    if (code) {
+      if (code.data === _qrTargetId) {
+        const targetId = _qrTargetId;
+        state.pendingQrCode = code.data;
+        closeQrScanner();
+        triggerUnseal(targetId);
+        return;
+      } else {
+        document.getElementById('qr-status').textContent = 'このQRコードは対象外です';
+      }
+    }
+  }
+  _qrAnimFrame = requestAnimationFrame(_scanQrFrame);
+}
+
+function closeQrScanner() {
+  cancelAnimationFrame(_qrAnimFrame);
+  _qrAnimFrame = null;
+  if (_qrStream) {
+    _qrStream.getTracks().forEach((t) => t.stop());
+    _qrStream = null;
+  }
+  _qrTargetId = null;
+  document.getElementById('qr-modal').classList.remove('show');
+}
+
 // モーダル背景クリックで閉じる
 document.querySelectorAll('.modal-overlay').forEach((m) => {
   m.addEventListener('click', (e) => {
-    if (e.target === m) m.classList.remove('show');
+    if (e.target === m) {
+      if (m.id === 'qr-modal') { closeQrScanner(); return; }
+      m.classList.remove('show');
+    }
   });
 });

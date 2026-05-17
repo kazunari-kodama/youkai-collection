@@ -19,8 +19,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       TableName: YOUKAI_TABLE,
       FilterExpression: 'rally_key = :k',
       ExpressionAttributeValues: { ':k': key },
-      ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, image_types, rally_key',
-      ExpressionAttributeNames: { '#n': 'name' },
+      ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, image_types, rally_key, #rq',
+      ExpressionAttributeNames: { '#n': 'name', '#rq': 'require_qr' },
     }),
   );
 
@@ -35,6 +35,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     lon: item.longitude,
     camera_url: toCameraUrl(item.images, IMAGES_BASE_URL),
     rally_key: item.rally_key,
+    ...(item.require_qr ? { require_qr: true } : {}),
   }));
 
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ key, yokai }) };

@@ -108,6 +108,14 @@ html, body {
   background: rgba(26,20,16,0.85);
   border-color: rgba(184,134,11,0.6);
 }
+#btn-clear-collection {
+  bottom: 50px;
+  left: 12px;
+  font-size: 11px;
+  padding: 6px 10px;
+  background: rgba(80,20,10,0.88);
+  border-color: rgba(192,57,43,0.6);
+}
 #btn-debug.active {
   background: var(--gold);
   color: var(--ink);
@@ -363,6 +371,12 @@ html, body {
   margin-bottom: 16px;
   letter-spacing: 0.1em;
 }
+.modal-meta[style*="cursor"] {
+  text-decoration: underline dotted;
+  transition: opacity 0.15s;
+}
+.modal-meta[style*="cursor"]:hover,
+.modal-meta[style*="cursor"]:active { opacity: 1; }
 
 .btn-primary {
   display: block;
@@ -929,8 +943,65 @@ html, body {
 }
 .btn-exit-rally:hover { opacity: 1; }
 
+/* QR Scanner */
+.qr-container {
+  width: 100%;
+  max-width: 380px;
+  background: #000;
+  position: relative;
+  border: 1px solid var(--vermilion);
+}
+
+.qr-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+#qr-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.qr-frame {
+  position: absolute;
+  inset: 18%;
+  border: 2px solid var(--vermilion);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+  animation: qr-frame-pulse 1.8s ease-in-out infinite;
+}
+@keyframes qr-frame-pulse {
+  0%, 100% { border-color: var(--vermilion); }
+  50%       { border-color: var(--moonlight); }
+}
+
+.qr-hint {
+  padding: 14px 16px 4px;
+  text-align: center;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 12px;
+  color: var(--paper-aged);
+  letter-spacing: 0.12em;
+  background: rgba(0,0,0,0.9);
+}
+
+.qr-status {
+  padding: 4px 16px 14px;
+  text-align: center;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 12px;
+  color: var(--vermilion);
+  letter-spacing: 0.08em;
+  min-height: 22px;
+  background: rgba(0,0,0,0.9);
+}
+
 /* Leaflet overrides */
 .leaflet-container { background: #0d0a08; }
+.leaflet-top.leaflet-left .leaflet-control-zoom { margin-top: 120px; }
 .leaflet-popup-content-wrapper {
   background: var(--paper);
   border-radius: 0;

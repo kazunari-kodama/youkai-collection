@@ -4,7 +4,7 @@ import { ddb, YOUKAI_TABLE, CAPTURES_TABLE } from '../lib/dynamodb';
 import { distanceMeters } from '../lib/distance';
 import type { YokaiDBItem } from '../types/youkai';
 
-const CAPTURE_RADIUS_M = 20;
+const CAPTURE_RADIUS_M = 13;
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -17,6 +17,7 @@ interface CaptureRequest {
   userLat: number;
   userLon: number;
   rallyKey?: string;
+  qrCode?: string;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -36,7 +37,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     new GetCommand({
       TableName: YOUKAI_TABLE,
       Key: { yokai_id: youkaiId },
-      ProjectionExpression: 'yokai_id, latitude, longitude',
+      ProjectionExpression: 'yokai_id, latitude, longitude, #rq',
+      ExpressionAttributeNames: { '#rq': 'require_qr' },
     }),
   );
 
@@ -44,7 +46,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 404, headers: HEADERS, body: JSON.stringify({ error: 'Youkai not found' }) };
   }
 
-  const youkai = yokaiResult.Item as Pick<YokaiDBItem, 'yokai_id' | 'latitude' | 'longitude'>;
+  const youkai = yokaiResult.Item as Pick<YokaiDBItem, 'yokai_id' | 'latitude' | 'longitude' | 'require_qr'>;
   const dist = distanceMeters(userLat, userLon, youkai.latitude, youkai.longitude);
 
   if (dist > CAPTURE_RADIUS_M) {
@@ -52,6 +54,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       statusCode: 403,
       headers: HEADERS,
       body: JSON.stringify({ error: 'Too far', distance: Math.round(dist) }),
+    };
+  }
+
+  if (youkai.require_qr && body.qrCode !== youkaiId) {
+    return {
+      statusCode: 403,
+      headers: HEADERS,
+      body: JSON.stringify({ error: 'QR code required' }),
     };
   }
 
