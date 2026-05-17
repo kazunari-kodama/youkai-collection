@@ -211,6 +211,20 @@ html, body {
   cursor: pointer;
 }
 
+/* Captured marker faction rings */
+.captured-marker.seal,
+.captured-marker-fallback.seal {
+  border-color: var(--vermilion);
+  box-shadow: 0 0 14px rgba(200,48,42,0.7), 0 4px 8px rgba(0,0,0,0.6);
+  color: var(--vermilion);
+}
+.captured-marker.bond,
+.captured-marker-fallback.bond {
+  border-color: #9b59f0;
+  box-shadow: 0 0 14px rgba(107,47,160,0.7), 0 4px 8px rgba(0,0,0,0.6);
+  color: #c49ef8;
+}
+
 /* Player marker */
 .player-marker {
   width: 22px;

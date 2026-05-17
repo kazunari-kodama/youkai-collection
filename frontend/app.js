@@ -25,7 +25,7 @@ const AIZU_CASTLE = { lat: 37.4946, lon: 139.9293 };
 const TOKYO_STATION = { lat: 35.6812, lon: 139.7671 };
 
 let youkaiData = [];      // YokaiListItem[]
-let capturedIds = new Set();
+let capturedIds = new Map(); // youkaiId → actionType ('seal' | 'bond')
 
 // --- Stamp Rally state --------------------------------------
 const rallyState = {
@@ -77,7 +77,7 @@ async function loadData() {
       apiGet(`/collection?deviceId=${encodeURIComponent(DEVICE_ID)}`),
     ]);
     youkaiData = youkai;
-    capturedIds = new Set(collection.map((c) => c.youkaiId));
+    capturedIds = new Map(collection.map((c) => [c.youkaiId, c.actionType ?? 'seal']));
     return true;
   } catch (e) {
     setStatus('データ読込失敗: ' + e.message);
@@ -132,22 +132,24 @@ function initMap() {
   updateStats();
 }
 
-function capturedMarkerHtml(youkai) {
+function capturedMarkerHtml(youkai, actionType) {
+  const ring = actionType === 'bond' ? 'bond' : 'seal';
   if (youkai.camera_url) {
-    return `<div class="captured-marker" data-id="${youkai.id}">` +
+    return `<div class="captured-marker ${ring}" data-id="${youkai.id}">` +
       `<img src="${youkai.camera_url}" alt="${youkai.name}" ` +
-      `onerror="this.parentElement.className='captured-marker-fallback';this.remove();this.parentElement.textContent='${youkai.name.charAt(0)}'">` +
+      `onerror="this.parentElement.className='captured-marker-fallback ${ring}';this.remove();this.parentElement.textContent='${youkai.name.charAt(0)}'">` +
       `</div>`;
   }
-  return `<div class="captured-marker-fallback" data-id="${youkai.id}">${youkai.name.charAt(0)}</div>`;
+  return `<div class="captured-marker-fallback ${ring}" data-id="${youkai.id}">${youkai.name.charAt(0)}</div>`;
 }
 
 function addYoukaiMarker(youkai) {
-  const isCaptured = capturedIds.has(youkai.id);
+  const actionType = capturedIds.get(youkai.id);
+  const isCaptured = actionType !== undefined;
   const icon = L.divIcon({
     className: 'youkai-icon-wrapper',
     html: isCaptured
-      ? capturedMarkerHtml(youkai)
+      ? capturedMarkerHtml(youkai, actionType)
       : `<div class="hitodama-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.png" alt=""></div>`,
     iconSize: isCaptured ? [44, 44] : [36, 36],
     iconAnchor: isCaptured ? [22, 22] : [18, 18],
@@ -388,7 +390,7 @@ async function confirmCapture() {
     refreshRallyMarker(detail.id);
     updateRallyStats();
   } else {
-    capturedIds.add(detail.id);
+    capturedIds.set(detail.id, isSupernatural ? 'bond' : 'seal');
     refreshMarker(detail.id);
     updateStats();
   }
@@ -808,7 +810,7 @@ async function clearCollection() {
     });
     if (!res.ok) throw new Error(await res.text());
     const { deleted } = await res.json();
-    capturedIds = new Set();
+    capturedIds = new Map();
     rallyState.capturedIds = new Set();
     // マーカーを未捕獲状態に更新
     Object.values(youkaiMarkers).forEach(({ marker, data }) => {
