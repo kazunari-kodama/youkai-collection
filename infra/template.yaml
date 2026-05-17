@@ -7,6 +7,10 @@ Parameters:
     Type: String
     Default: change-me-before-deploy
     Description: Secret key for CMS admin API (X-Admin-Key header)
+  SystemKey:
+    Type: String
+    Default: change-me-before-deploy
+    Description: Secret key for system (Claude routine) API (X-System-Key header)
 
 Globals:
   Function:
@@ -20,6 +24,8 @@ Globals:
         CAPTURES_TABLE: !Ref CapturesTable
         IMAGES_BASE_URL: !Sub 'https://${ImagesDistribution.DomainName}'
         ADMIN_KEY: !Ref AdminKey
+        SYSTEM_KEY: !Ref SystemKey
+        RESEARCH_TABLE: !Ref YoukaiResearchTable
         IMAGES_BUCKET: youkai-collection-images
 
 Resources:
@@ -29,14 +35,53 @@ Resources:
     Properties:
       StageName: prod
       Cors:
-        AllowMethods: "'GET,POST,DELETE,OPTIONS'"
-        AllowHeaders: "'Content-Type,X-Admin-Key'"
+        AllowMethods: "'GET,POST,PATCH,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Admin-Key,X-System-Key'"
         AllowOrigin: "'*'"
+
+  # Research Table (youkai_research)
+  YoukaiResearchTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai_research
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: research_id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: collected_at
+          AttributeType: S
+        - AttributeName: collector_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: research_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-collected_at-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: collected_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: collector_id-collected_at-index
+          KeySchema:
+            - AttributeName: collector_id
+              KeyType: HASH
+            - AttributeName: collected_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
 
   # Captures Table (new)
   CapturesTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: youkai-captures
       BillingMode: PAY_PER_REQUEST
