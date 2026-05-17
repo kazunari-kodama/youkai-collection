@@ -7,6 +7,8 @@ export const ddb = DynamoDBDocumentClient.from(client);
 export const YOUKAI_TABLE = process.env.YOUKAI_TABLE!;
 export const CAPTURES_TABLE = process.env.CAPTURES_TABLE!;
 export const IMAGES_BASE_URL = process.env.IMAGES_BASE_URL!;
+export const RESEARCH_TABLE = process.env.RESEARCH_TABLE!;
+export const CORE_TABLE = process.env.CORE_TABLE!;
 
 /** images[0] → camera URL
  *  "youkai/xxx_camera.png"  → "{base}/youkai/xxx_camera.png"  (direct key, new format)

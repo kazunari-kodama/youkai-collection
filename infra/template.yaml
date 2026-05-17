@@ -26,6 +26,7 @@ Globals:
         ADMIN_KEY: !Ref AdminKey
         SYSTEM_KEY: !Ref SystemKey
         RESEARCH_TABLE: !Ref YoukaiResearchTable
+        CORE_TABLE: !Ref YoukaiCoreTable
         IMAGES_BUCKET: youkai-collection-images
 
 Resources:
@@ -436,6 +437,154 @@ Resources:
             RestApiId: !Ref YokaiApi
             Path: /admin/upload-url
             Method: POST
+
+  # Lambda: POST /research
+  CreateResearchFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/createResearch.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/createResearch.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt YoukaiResearchTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /research
+            Method: POST
+
+  # Lambda: PATCH /research/{id}
+  UpdateResearchFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/updateResearch.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/updateResearch.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt YoukaiResearchTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /research/{id}
+            Method: PATCH
+
+  # Lambda: POST /research/{id}/promote
+  PromoteResearchFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/promoteResearch.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/promoteResearch.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt YoukaiResearchTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt YoukaiCoreTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /research/{id}/promote
+            Method: POST
+
+  # Lambda: GET /core
+  ListCoreFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/listCore.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/listCore.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !GetAtt YoukaiCoreTable.Arn
+                - !Sub '${YoukaiCoreTable.Arn}/index/*'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /core
+            Method: GET
+
+  # Lambda: GET /core/{id}
+  GetCoreFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/getCore.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/getCore.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt YoukaiCoreTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /core/{id}
+            Method: GET
 
   # Images CloudFront (youkai-collection-images bucket)
   ImagesOAC:
