@@ -2,17 +2,16 @@ import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { randomUUID } from 'crypto';
 import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, RESEARCH_TABLE, CORE_TABLE } from '../lib/dynamodb';
+import { resolveRole } from '../lib/auth';
 
 const HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
 };
 
-const ADMIN_KEY = process.env.ADMIN_KEY!;
-
 export const handler: APIGatewayProxyHandler = async (event) => {
-  const adminKey = event.headers['x-admin-key'] ?? event.headers['X-Admin-Key'];
-  if (adminKey !== ADMIN_KEY) {
+  const role = resolveRole(event);
+  if (role !== 'curator') {
     return { statusCode: 401, headers: HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
@@ -47,11 +46,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       ? body.yokai_id.trim()
       : randomUUID();
 
-  // Write to youkai_core — published="true" enables GSI lookup
   const gameVisible =
     typeof body.game_visible === 'boolean'
       ? body.game_visible
       : body.game_visible === 'true';
+
+  // notes: research.notes が優先、なければ旧 summary にフォールバック
+  const resolvedNotes = current.Item.notes ?? current.Item.summary;
 
   const coreItem: Record<string, unknown> = {
     yokai_id,
@@ -62,15 +63,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     source_research_id: research_id,
     ...(gameVisible ? { game_visible: 'true' } : {}),
   };
-  if (current.Item.summary) coreItem.notes = current.Item.summary;
-  if (current.Item.source_url) coreItem.source_url = current.Item.source_url;
-  if (current.Item.source_type) coreItem.source_type = current.Item.source_type;
-  if (current.Item.raw_content) coreItem.raw_content = current.Item.raw_content;
-  if (current.Item.reliability_score != null) coreItem.reliability_score = current.Item.reliability_score;
-  if (current.Item.originality_score != null) coreItem.originality_score = current.Item.originality_score;
-  if (current.Item.latitude != null) coreItem.latitude = current.Item.latitude;
-  if (current.Item.longitude != null) coreItem.longitude = current.Item.longitude;
-  if (current.Item.media_attachments) coreItem.images = current.Item.media_attachments;
+  if (resolvedNotes)                              coreItem.notes = resolvedNotes;
+  if (current.Item.place_name)                    coreItem.place_name = current.Item.place_name;
+  if (current.Item.source_url)                    coreItem.source_url = current.Item.source_url;
+  if (current.Item.source_type)                   coreItem.source_type = current.Item.source_type;
+  if (current.Item.raw_content)                   coreItem.raw_content = current.Item.raw_content;
+  if (current.Item.reliability_score != null)     coreItem.reliability_score = current.Item.reliability_score;
+  if (current.Item.originality_score != null)     coreItem.originality_score = current.Item.originality_score;
+  if (current.Item.latitude != null)              coreItem.latitude = current.Item.latitude;
+  if (current.Item.longitude != null)             coreItem.longitude = current.Item.longitude;
+  if (current.Item.media_attachments)             coreItem.images = current.Item.media_attachments;
 
   await ddb.send(new PutCommand({ TableName: CORE_TABLE, Item: coreItem }));
 

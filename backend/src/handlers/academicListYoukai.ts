@@ -31,12 +31,15 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }),
   );
 
+  // 創作妖怪（is_original: true）は学術モードから除外
+  const items = (result.Items ?? []).filter((i) => i.is_original !== true);
+
   return {
     statusCode: 200,
     headers: HEADERS,
     body: JSON.stringify({
-      items: result.Items ?? [],
-      count: result.Count ?? 0,
+      items,
+      count: items.length,
       ...(result.LastEvaluatedKey ? { next_key: result.LastEvaluatedKey } : {}),
     }),
   };

@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { PutCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE } from '../lib/dynamodb';
+import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, YOUKAI_TABLE, CORE_TABLE } from '../lib/dynamodb';
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -39,6 +39,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (typeof body.longitude === 'number') item.longitude = body.longitude;
   if (body.night_only === true) item.night_only = true;
   if (body.require_qr === true) item.require_qr = true;
+  if (body.is_original === true) item.is_original = true;
 
   const arrayFields = ['images', 'image_types', 'image_captions', 'regions', 'category_tags', 'keywords'] as const;
   for (const f of arrayFields) {
@@ -47,6 +48,26 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   await ddb.send(new PutCommand({ TableName: YOUKAI_TABLE, Item: item }));
+
+  // youkai_core に is_original フラグを同期（存在する場合のみ）
+  try {
+    const updateExpr = body.is_original === true
+      ? 'SET is_original = :v'
+      : 'REMOVE is_original';
+    const exprVals = body.is_original === true
+      ? { ':v': true }
+      : undefined;
+    await ddb.send(new UpdateCommand({
+      TableName: CORE_TABLE,
+      Key: { yokai_id: yokai_id.trim() },
+      UpdateExpression: updateExpr,
+      ...(exprVals ? { ExpressionAttributeValues: exprVals } : {}),
+      ConditionExpression: 'attribute_exists(yokai_id)',
+    }));
+  } catch (e: any) {
+    if (e.name !== 'ConditionalCheckFailedException') throw e;
+    // youkai_core に対応するアイテムが存在しない場合は無視
+  }
 
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ ok: true, yokai_id: item.yokai_id }) };
 };

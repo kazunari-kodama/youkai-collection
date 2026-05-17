@@ -197,6 +197,16 @@ tr:hover td { background: var(--hover); }
   letter-spacing: 0.05em;
   margin-left: 3px;
 }
+.badge-original {
+  display: inline-block;
+  background: #1a2d1a;
+  color: #7ecb7e;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.05em;
+  margin-left: 3px;
+}
 .btn-edit, .btn-delete {
   padding: 5px 12px;
   border-radius: 4px;

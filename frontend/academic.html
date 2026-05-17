@@ -50,13 +50,13 @@
     </div>
   </div>
 
-  <!-- 地図 -->
-  <div id="ac-map"></div>
-
   <!-- カテゴリフィルター -->
   <div class="ac-filter-bar" id="ac-filter-bar">
     <button class="ac-filter-btn active" data-cat="" onclick="filterCategory(this, '')">すべて</button>
   </div>
+
+  <!-- 地図 -->
+  <div id="ac-map"></div>
 
   <!-- 詳細パネル -->
   <div id="ac-detail" class="ac-detail" style="display:none;">
@@ -75,13 +75,14 @@
   </div>
 
   <!-- ローディング -->
-  <div id="ac-loading" class="ac-loading">
+  <div id="ac-loading" class="ac-loading" style="display:none;">
     <div class="ac-loading-spinner"></div>
     <div>妖怪データを読み込んでいます…</div>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6/dist/amazon-cognito-identity.min.js"></script>
 <script src="config.js"></script>
 <script src="academic.js"></script>
 </body>

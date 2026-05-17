@@ -1,14 +1,13 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, RESEARCH_TABLE } from '../lib/dynamodb';
+import { resolveRole } from '../lib/auth';
 import type { ResearchStatus } from '../types/research';
 
 const HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
 };
-
-const ADMIN_KEY = process.env.ADMIN_KEY!;
 
 // approve transition is handled by /promote endpoint
 const VALID_TRANSITIONS: Partial<Record<ResearchStatus, ResearchStatus[]>> = {
@@ -17,8 +16,8 @@ const VALID_TRANSITIONS: Partial<Record<ResearchStatus, ResearchStatus[]>> = {
 };
 
 export const handler: APIGatewayProxyHandler = async (event) => {
-  const adminKey = event.headers['x-admin-key'] ?? event.headers['X-Admin-Key'];
-  if (adminKey !== ADMIN_KEY) {
+  const role = resolveRole(event);
+  if (role !== 'curator') {
     return { statusCode: 401, headers: HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
@@ -61,8 +60,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     updates.reviewed_by = 'curator';
     updates.reviewed_at = now;
   }
-  if (typeof body.review_notes === 'string') updates.review_notes = body.review_notes;
-  if (typeof body.summary === 'string') updates.summary = body.summary;
+  if (typeof body.review_notes === 'string')      updates.review_notes = body.review_notes;
+  if (typeof body.notes === 'string')             updates.notes = body.notes;
+  if (typeof body.summary === 'string')           updates.summary = body.summary;
   if (typeof body.reliability_score === 'number') updates.reliability_score = body.reliability_score;
   if (typeof body.originality_score === 'number') updates.originality_score = body.originality_score;
 

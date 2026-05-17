@@ -3,11 +3,11 @@
 // Cognito 認証 + GET /academic/youkai + Leaflet 地図表示
 // ============================================================
 
-const COGNITO_REGION   = 'ap-northeast-1';
-const COGNITO_CLIENT   = '219csst82vd6cc0pdm2cvgmh9t';
-const COGNITO_ENDPOINT = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
-const TOKEN_KEY        = 'ac_id_token';
-const REFRESH_KEY      = 'ac_refresh_token';
+const COGNITO_REGION      = 'ap-northeast-1';
+const COGNITO_USER_POOL_ID = 'ap-northeast-1_jD05QlqAD';
+const COGNITO_CLIENT       = '219csst82vd6cc0pdm2cvgmh9t';
+const TOKEN_KEY            = 'ac_id_token';
+const REFRESH_KEY          = 'ac_refresh_token';
 
 // カテゴリ → 色マッピング
 const CAT_COLORS = {
@@ -44,7 +44,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // ──────────────────────────────────────────────
 // ログイン
 // ──────────────────────────────────────────────
-async function doLogin() {
+function doLogin() {
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   const btn      = document.getElementById('login-btn');
@@ -54,45 +54,50 @@ async function doLogin() {
   btn.disabled = true;
   btn.textContent = '認証中…';
 
+  const resetBtn = () => { btn.disabled = false; btn.textContent = 'ログ イ ン'; };
+
   try {
-    const resp = await fetch(COGNITO_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type'  : 'application/x-amz-json-1.1',
-        'X-Amz-Target'  : 'AmazonCognitoIdentityProviderService.InitiateAuth',
-      },
-      body: JSON.stringify({
-        AuthFlow       : 'USER_PASSWORD_AUTH',
-        ClientId       : COGNITO_CLIENT,
-        AuthParameters : { USERNAME: email, PASSWORD: password },
-      }),
+    const userPool = new AmazonCognitoIdentity.CognitoUserPool({
+      UserPoolId: COGNITO_USER_POOL_ID,
+      ClientId  : COGNITO_CLIENT,
+    });
+    const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+      Username: email,
+      Pool    : userPool,
+    });
+    const authDetails = new AmazonCognitoIdentity.AuthenticationDetails({
+      Username: email,
+      Password: password,
     });
 
-    const data = await resp.json();
+    cognitoUser.authenticateUser(authDetails, {
+      onSuccess(result) {
+        const idToken      = result.getIdToken().getJwtToken();
+        const refreshToken = result.getRefreshToken().getToken();
 
-    if (!resp.ok) {
-      const msg = data.message || data.__type || 'ログインに失敗しました';
-      showError(translateCognitoError(msg));
-      return;
-    }
+        if (!isPremium(idToken)) {
+          showError('学術モードはプレミアム会員限定です。\nアカウントのアップグレードが必要です。');
+          resetBtn();
+          return;
+        }
 
-    const idToken      = data.AuthenticationResult.IdToken;
-    const refreshToken = data.AuthenticationResult.RefreshToken;
-
-    if (!isPremium(idToken)) {
-      showError('学術モードはプレミアム会員限定です。\nアカウントのアップグレードが必要です。');
-      return;
-    }
-
-    localStorage.setItem(TOKEN_KEY,   idToken);
-    localStorage.setItem(REFRESH_KEY, refreshToken);
-    showMapView(idToken);
-
+        localStorage.setItem(TOKEN_KEY,   idToken);
+        localStorage.setItem(REFRESH_KEY, refreshToken);
+        resetBtn();
+        showMapView(idToken);
+      },
+      onFailure(err) {
+        showError(translateCognitoError(err.code || err.message || 'ログインに失敗しました'));
+        resetBtn();
+      },
+      newPasswordRequired() {
+        showError('パスワードの変更が必要です。管理者にお問い合わせください。');
+        resetBtn();
+      },
+    });
   } catch (e) {
     showError('通信エラーが発生しました。');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'ログ イ ン';
+    resetBtn();
   }
 }
 
@@ -114,9 +119,11 @@ function showError(msg) {
 // ──────────────────────────────────────────────
 async function showMapView(token) {
   document.getElementById('login-view').style.display = 'none';
-  document.getElementById('map-view').style.display   = 'block';
+  document.getElementById('map-view').style.display   = 'flex';
 
   if (!map) initMap();
+  // 非表示コンテナで初期化したLeafletのサイズを再計算
+  setTimeout(() => { if (map) map.invalidateSize(); }, 100);
   document.getElementById('ac-loading').style.display = 'flex';
 
   try {
@@ -342,14 +349,17 @@ function sourceLabel(type) {
   return { academic: '学術文献', web: 'Web', oral: '民間伝承', image: '画像資料' }[type] || type;
 }
 
-function translateCognitoError(msg) {
-  if (msg.includes('NotAuthorizedException') || msg.includes('Incorrect'))
+function translateCognitoError(codeOrMsg) {
+  const s = codeOrMsg || '';
+  if (s.includes('NotAuthorizedException') || s.includes('Incorrect'))
     return 'メールアドレスまたはパスワードが正しくありません。';
-  if (msg.includes('UserNotFoundException'))
+  if (s.includes('UserNotFoundException'))
     return 'アカウントが見つかりません。';
-  if (msg.includes('UserNotConfirmedException'))
+  if (s.includes('UserNotConfirmedException'))
     return 'メールアドレスの確認が完了していません。';
-  if (msg.includes('PasswordResetRequiredException'))
+  if (s.includes('PasswordResetRequiredException'))
     return 'パスワードのリセットが必要です。';
-  return msg;
+  if (s.includes('LimitExceededException'))
+    return 'ログイン試行回数が上限に達しました。しばらくお待ちください。';
+  return s;
 }
