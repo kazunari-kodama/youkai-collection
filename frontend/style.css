@@ -29,14 +29,70 @@ html, body {
 
 /* HUD top bar */
 .hud-top {
-  position: absolute;
+  position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 1000;
-  padding: 14px 18px 18px;
-  background: linear-gradient(to bottom, rgba(13,10,8,0.95) 0%, rgba(13,10,8,0.7) 60%, rgba(13,10,8,0) 100%);
+  padding: 8px 12px 0;
+  background: rgba(13,10,8,0.96);
+  border-bottom: 1px solid rgba(184,134,11,0.18);
   pointer-events: none;
 }
 .hud-top > * { pointer-events: auto; }
+
+/* Side menu panel */
+.side-menu {
+  position: fixed;
+  top: 68px;
+  right: 8px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.side-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  padding: 8px 4px;
+  background: rgba(13,10,8,0.92);
+  border: 1px solid rgba(184,134,11,0.45);
+  border-radius: 3px;
+  color: var(--paper-aged);
+  font-family: 'Noto Serif JP', serif;
+  cursor: pointer;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.55);
+  transition: all 0.2s;
+}
+.side-btn:hover, .side-btn:active {
+  background: var(--vermilion);
+  border-color: var(--vermilion);
+  color: var(--paper);
+}
+.side-icon {
+  font-size: 17px;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.side-label {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: inherit;
+}
+#btn-rally.active {
+  background: var(--vermilion);
+  border-color: var(--vermilion);
+  color: var(--paper);
+}
+@media (max-width: 480px) {
+  .side-menu { top: 62px; right: 6px; }
+  .side-btn { width: 50px; padding: 7px 3px; }
+  .side-icon { font-size: 15px; }
+}
 
 .title-bar {
   display: flex;
@@ -98,7 +154,6 @@ html, body {
 }
 .float-btn .icon { margin-right: 6px; }
 
-#btn-collection { top: 70px; right: 12px; }
 #btn-locate { bottom: 80px; right: 12px; padding: 12px 14px; }
 #btn-debug {
   bottom: 12px;
@@ -613,7 +668,6 @@ html, body {
   .title { font-size: 16px; }
   .stats { font-size: 11px; padding: 4px 9px; }
   .float-btn { font-size: 11px; padding: 8px 11px; }
-  #btn-collection { top: 62px; right: 10px; }
   #btn-locate { bottom: 70px; right: 10px; }
   .modal { padding: 20px; }
   .modal-name { font-size: 26px; }
@@ -787,26 +841,11 @@ html, body {
    Stamp Rally
    ============================================= */
 
-/* 学術モードボタン: 図鑑ボタン(top:70px)の直下 */
-#btn-academic {
-  top: 120px;
-  right: 12px;
-  text-decoration: none;
-}
-@media (max-width: 480px) {
-  #btn-academic { top: 110px; right: 10px; }
-}
-
-/* HUD button */
-#btn-rally {
-  top: 70px;
-  left: 12px;
-  border-color: var(--vermilion);
-}
+/* Rally active — side-menu context */
 #btn-rally.active {
   background: var(--vermilion);
+  border-color: var(--vermilion);
   color: var(--paper);
-  border-color: var(--vermilion-deep);
 }
 
 /* Map marker — uncaptured rally yokai */
@@ -1050,6 +1089,64 @@ html, body {
   color: #c49ef8;
 }
 
+/* Debug role switcher panel */
+.debug-role-panel {
+  display: none;
+  position: fixed;
+  top: 60px;
+  right: 8px;
+  z-index: 900;
+  background: rgba(10,8,6,0.97);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  padding: 10px 8px 6px;
+  min-width: 190px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+}
+.debug-role-panel.show { display: block; }
+.drp-title {
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+  text-align: center;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+.drp-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 6px 8px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: background 0.15s;
+  text-align: left;
+}
+.drp-btn:hover { filter: brightness(1.3); }
+.drp-emblem {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.drp-name {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  color: var(--paper-light);
+  flex: 1;
+}
+.drp-faction {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
 /* Faction selection modal */
 .faction-modal {
   max-width: 360px;
@@ -1142,6 +1239,540 @@ html, body {
   color: #e8d8ff;
   text-shadow: 0 0 20px rgba(155,89,240,0.8);
 }
+
+/* ── Faction Meter (全国勢力バー) ─────────────────────────── */
+.faction-meter {
+  display: flex;
+  height: 22px;
+  overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+.faction-meter.loaded { opacity: 1; }
+.fm-seg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  min-width: 0;
+  transition: flex 0.6s ease;
+  overflow: hidden;
+}
+.fm-exorcist {
+  background: rgba(200,48,42,0.25);
+  justify-content: flex-start;
+}
+.fm-supernatural {
+  background: rgba(107,47,160,0.25);
+  justify-content: flex-end;
+}
+.fm-name {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--paper-aged);
+  white-space: nowrap;
+}
+.fm-pct {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.fm-exorcist .fm-pct { color: #e88080; }
+.fm-supernatural .fm-pct { color: #c49ef8; }
+
+/* ── Yokai Stats Meter (妖怪別勢力) ───────────────────────── */
+.yokai-meter-wrap {
+  margin: 14px 0 4px;
+  padding: 10px 12px;
+  background: rgba(26,20,16,0.45);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 2px;
+}
+.yokai-meter-title {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--paper-aged);
+  opacity: 0.7;
+  margin-bottom: 7px;
+}
+.yokai-meter-bar {
+  height: 6px;
+  background: rgba(107,47,160,0.35);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.yokai-meter-fill {
+  height: 100%;
+  background: var(--vermilion);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.yokai-meter-counts {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  color: var(--paper-aged);
+  opacity: 0.8;
+  letter-spacing: 0.06em;
+}
+
+/* ── Role Diagnosis Quiz ────────────────────────────── */
+.rq-overlay { background: rgba(6,4,2,0.97); align-items: center; justify-content: center; }
+.rq-wrap {
+  width: 100%;
+  max-width: 460px;
+  max-height: 100dvh;
+  padding: 48px 28px 32px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rq-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  animation: rq-in 0.35s ease;
+}
+@keyframes rq-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* intro */
+.rq-intro-deco {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 10px;
+  letter-spacing: 0.5em;
+  color: var(--vermilion);
+  margin-bottom: 36px;
+  opacity: 0.75;
+}
+.rq-intro-text {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 15px;
+  line-height: 2.2;
+  color: var(--paper-aged);
+  text-align: center;
+  margin-bottom: 48px;
+}
+.rq-start-btn {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  color: var(--paper);
+  background: none;
+  border: 1px solid var(--vermilion);
+  padding: 13px 36px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.rq-start-btn:hover { background: rgba(200,48,42,0.12); }
+
+/* question */
+.rq-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 28px;
+}
+.rq-progress {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--paper-aged);
+  opacity: 0.45;
+}
+.rq-phase-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--vermilion);
+  opacity: 0.7;
+}
+.rq-situation {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 14px;
+  line-height: 2.1;
+  color: var(--paper-aged);
+  opacity: 0.7;
+  white-space: pre-line;
+  text-align: center;
+  margin-bottom: 24px;
+}
+.rq-question-text {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--paper);
+  letter-spacing: 0.1em;
+  margin-bottom: 28px;
+}
+.rq-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.rq-option {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  color: var(--paper-aged);
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.09);
+  padding: 15px 18px;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.6;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.rq-option:hover {
+  background: rgba(200,48,42,0.1);
+  border-color: rgba(200,48,42,0.5);
+  color: var(--paper);
+}
+
+/* phase transition */
+.rq-tr-line {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 18px;
+  color: var(--paper-aged);
+  letter-spacing: 0.18em;
+  margin-bottom: 14px;
+  text-align: center;
+}
+.rq-tr-sub {
+  font-size: 13px;
+  opacity: 0.5;
+  animation: rq-in 0.6s ease 1.2s both;
+}
+
+/* result */
+.rq-res-head {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  color: var(--paper-aged);
+  opacity: 0.6;
+  margin-bottom: 6px;
+}
+.rq-res-sub {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--paper-aged);
+  opacity: 0.4;
+  margin-bottom: 32px;
+}
+.rq-res-emblem {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 62px;
+  font-weight: 800;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  margin-bottom: 24px;
+  animation: rq-emblem 0.5s ease 0.15s both;
+}
+@keyframes rq-emblem {
+  from { opacity: 0; transform: scale(0.65); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.rq-res-name {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--paper);
+  letter-spacing: 0.25em;
+  margin-bottom: 4px;
+}
+.rq-res-reading {
+  font-size: 11px;
+  color: var(--paper-aged);
+  letter-spacing: 0.15em;
+  opacity: 0.6;
+  margin-bottom: 12px;
+}
+.rq-res-faction {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  padding: 3px 14px;
+  border: 1px solid currentColor;
+  margin-bottom: 18px;
+}
+.rq-res-tagline {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 12px;
+  color: var(--paper-aged);
+  letter-spacing: 0.1em;
+  opacity: 0.75;
+  margin-bottom: 20px;
+}
+.rq-res-desc {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  line-height: 1.95;
+  color: var(--paper-aged);
+  opacity: 0.7;
+  text-align: center;
+  margin-bottom: 36px;
+}
+.rq-confirm-btn {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  color: var(--paper);
+  background: rgba(200,48,42,0.18);
+  border: 1px solid var(--vermilion);
+  padding: 15px 0;
+  width: 100%;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: background 0.2s;
+}
+.rq-confirm-btn:hover { background: rgba(200,48,42,0.35); }
+.rq-browse-btn {
+  background: none;
+  border: 1px solid rgba(184,134,11,0.35);
+  color: var(--gold);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  padding: 10px 20px;
+  border-radius: 2px;
+  margin-bottom: 10px;
+  transition: background 0.2s;
+}
+.rq-browse-btn:hover { background: rgba(184,134,11,0.12); }
+.rq-retake-btn {
+  background: none;
+  border: none;
+  color: var(--paper-aged);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  opacity: 0.4;
+  cursor: pointer;
+  padding: 8px;
+}
+.rq-retake-btn:hover { opacity: 0.75; }
+
+/* ======================================================
+   Skill Panel
+   ====================================================== */
+.skill-panel { max-height: 90vh; overflow-y: auto; }
+
+.skill-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(184,134,11,0.25);
+}
+.skill-panel-emblem {
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 22px;
+  color: var(--gold);
+  flex-shrink: 0;
+  background: rgba(184,134,11,0.08);
+}
+.skill-panel-role {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 20px;
+  letter-spacing: 0.15em;
+  color: var(--moonlight);
+}
+.skill-panel-rank {
+  font-size: 12px;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  margin-top: 3px;
+}
+
+.skill-list { display: flex; flex-direction: column; gap: 12px; }
+
+.skill-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(184,134,11,0.2);
+  border-radius: 3px;
+  padding: 14px 16px;
+}
+.skill-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.skill-name {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  color: var(--moonlight);
+}
+.skill-badge {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid;
+}
+.skill-badge.ready { color: #4caf72; border-color: #4caf72; background: rgba(76,175,114,0.1); }
+.skill-badge.used  { color: var(--gold); border-color: var(--gold); background: rgba(184,134,11,0.1); }
+.skill-badge.locked{ color: #888; border-color: #555; }
+
+.skill-desc {
+  font-size: 12px;
+  color: var(--paper-aged);
+  line-height: 1.7;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+.skill-action-btn {
+  width: 100%;
+  padding: 9px;
+  background: transparent;
+  border: 1px solid var(--vermilion);
+  color: var(--paper-aged);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.skill-action-btn:hover { background: var(--vermilion); color: var(--paper); }
+.skill-action-btn:disabled {
+  border-color: #444; color: #555; cursor: not-allowed;
+}
+.skill-action-btn.juju-btn {
+  border-color: #8b2fc9;
+}
+.skill-action-btn.juju-btn:hover { background: #8b2fc9; }
+
+/* Skill result overlay */
+.skill-result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  background: rgba(13,10,8,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.skill-result-box {
+  background: var(--ink-soft);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  padding: 24px 20px 20px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+}
+.skill-result-title {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+.skill-result-body {
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--paper-aged);
+  letter-spacing: 0.06em;
+  margin-bottom: 18px;
+  white-space: pre-line;
+}
+.skill-result-close {
+  padding: 8px 28px;
+  background: transparent;
+  border: 1px solid var(--paper-aged);
+  color: var(--paper-aged);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+}
+.skill-result-close:hover { background: rgba(255,255,255,0.08); }
+
+/* 紋様術 floating button */
+.monyou-btn {
+  position: fixed;
+  bottom: 130px;
+  left: 16px;
+  z-index: 999;
+  width: 50px;
+  height: 50px;
+  background: rgba(13,10,8,0.9);
+  border: 1px solid #8b2fc9;
+  border-radius: 50%;
+  color: #c87ef0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 12px rgba(139,47,201,0.4);
+}
+.monyou-btn:active { transform: scale(0.93); }
+
+/* 結界術 overlay */
+.kekkai-hint {
+  position: fixed;
+  bottom: 70px;
+  left: 16px;
+  z-index: 999;
+  background: rgba(13,10,8,0.85);
+  border: 1px solid rgba(30,95,168,0.7);
+  border-radius: 3px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #7ab4ff;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+/* 読解術 overlay button on map */
+.dokaishu-popup {
+  background: rgba(13,10,8,0.95);
+  border: 1px solid rgba(30,95,168,0.8);
+  border-radius: 3px;
+  padding: 10px 14px;
+  text-align: center;
+}
+.dokaishu-popup-title {
+  font-family: 'Shippori Mincho B1', serif;
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  color: #a8c8ff;
+  margin-bottom: 8px;
+}
+.dokaishu-popup-btn {
+  display: block;
+  width: 100%;
+  padding: 6px;
+  background: rgba(30,95,168,0.25);
+  border: 1px solid rgba(30,95,168,0.6);
+  color: #a8c8ff;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  margin-bottom: 5px;
+}
+.dokaishu-popup-btn:hover { background: rgba(30,95,168,0.5); }
 
 /* Leaflet overrides */
 .leaflet-container { background: #0d0a08; }

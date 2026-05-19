@@ -28,6 +28,8 @@ Globals:
         RESEARCH_TABLE: !Ref YoukaiResearchTable
         CORE_TABLE: !Ref YoukaiCoreTable
         IMAGES_BUCKET: youkai-collection-images
+        PLAYER_PROFILE_TABLE: !Ref PlayerProfileTable
+        PATTERNS_TABLE: !Ref PatternsTable
 
 Resources:
   # API Gateway
@@ -177,6 +179,61 @@ Resources:
           KeyType: HASH
         - AttributeName: youkaiId
           KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: youkaiId-index
+          KeySchema:
+            - AttributeName: youkaiId
+              KeyType: HASH
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - actionType
+
+  # Patterns Table (呪術師 紋様術)
+  PatternsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-patterns
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pattern_id
+          AttributeType: S
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: expires_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pattern_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: deviceId-expires_at-index
+          KeySchema:
+            - AttributeName: deviceId
+              KeyType: HASH
+            - AttributeName: expires_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  # Player Profile Table
+  PlayerProfileTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-player-profile
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
 
   # Lambda: GET /youkai
   ListYokaiFunction:
@@ -258,6 +315,11 @@ Resources:
               Action:
                 - dynamodb:PutItem
               Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt PlayerProfileTable.Arn
       Events:
         Api:
           Type: Api
@@ -265,6 +327,92 @@ Resources:
             RestApiId: !Ref YokaiApi
             Path: /capture
             Method: POST
+
+  # Lambda: GET /stats/global
+  GetGlobalStatsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/getGlobalStats.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/getGlobalStats.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource: !GetAtt CapturesTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /stats/global
+            Method: GET
+
+  # Lambda: GET /youkai/{id}/stats
+  GetYokaiStatsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/getYokaiStats.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/getYokaiStats.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !GetAtt CapturesTable.Arn
+                - !Sub '${CapturesTable.Arn}/index/*'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /youkai/{id}/stats
+            Method: GET
+
+  # Lambda: GET /player/profile
+  GetPlayerProfileFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/getPlayerProfile.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/getPlayerProfile.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /player/profile
+            Method: GET
 
   # Lambda: GET /collection
   GetCollectionFunction:
@@ -795,6 +943,209 @@ Resources:
             ResponseCode: 200
             ResponsePagePath: /index.html
 
+
+  # ---- Skill handlers ----
+
+  # Lambda: POST /skill/dokaishu (陰陽師: 読解術)
+  SkillDokaishuFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillDokaishu.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillDokaishu.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/dokaishu
+            Method: POST
+
+  # Lambda: POST /skill/shikigami (陰陽師: 式神術)
+  SkillShikigamiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillShikigami.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillShikigami.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem, dynamodb:Query]
+              Resource:
+                - !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/shikigami
+            Method: POST
+
+  # Lambda: GET /skill/kekkai (陰陽師: 結界術)
+  SkillKekkaiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKekkai.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKekkai.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:BatchGetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kekkai
+            Method: GET
+
+  # Lambda: POST /skill/kotodama (呪術師: 言霊術)
+  SkillKotodamaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKotodama.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKotodama.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kotodama
+            Method: POST
+
+  # Lambda: POST /skill/monyou (呪術師: 紋様術)
+  SkillMonyouFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillMonyou.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillMonyou.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:PutItem, dynamodb:Query, dynamodb:Scan]
+              Resource:
+                - !GetAtt PatternsTable.Arn
+                - !Sub '${PatternsTable.Arn}/index/*'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/monyou
+            Method: POST
+        ApiNearby:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/monyou/nearby
+            Method: GET
+
+  # Lambda: POST /skill/utsushidori (呪術師: 写し取り)
+  SkillUtsushidoriFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillUtsushidori.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillUtsushidori.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/utsushidori
+            Method: POST
 
 Outputs:
   UserPoolId:

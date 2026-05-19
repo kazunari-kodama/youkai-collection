@@ -316,6 +316,25 @@ function showDetail(item) {
     rawWrap.style.display = 'none';
   }
 
+  const sourcesWrap = document.getElementById('ac-detail-sources-wrap');
+  const sourcesList = document.getElementById('ac-detail-sources');
+  if (Array.isArray(item.sources) && item.sources.length > 0) {
+    sourcesList.innerHTML = item.sources.map((s, i) => {
+      const title = s.title || s.url;
+      const snippet = s.snippet ? `<div class="ac-source-snippet">${s.snippet}</div>` : '';
+      return `<li>
+        <span class="ac-source-index">${i + 1}.</span>
+        <div>
+          <a class="ac-source-link" href="${s.url}" target="_blank" rel="noopener noreferrer">${title}</a>
+          ${snippet}
+        </div>
+      </li>`;
+    }).join('');
+    sourcesWrap.style.display = 'block';
+  } else {
+    sourcesWrap.style.display = 'none';
+  }
+
   document.getElementById('ac-detail').style.display = 'block';
 
   if (item.latitude && item.longitude) {
@@ -367,11 +386,45 @@ function isPremium(token) {
 // ヘルパー
 // ──────────────────────────────────────────────
 function extractCategory(item) {
-  // notes のフォーマット: "[河童] 概要文" → 河童
+  // 1. notes の [カテゴリ] 形式
   const m = (item.notes || '').match(/^\[(.+?)\]/);
-  if (!m) return '';
-  const raw = m[1];
-  return CAT_NORMALIZE[raw] ?? raw;
+  if (m) {
+    const raw = m[1];
+    // 直接マッチ
+    if (CAT_NORMALIZE[raw]) return CAT_NORMALIZE[raw];
+    if (CAT_COLORS[raw]) return raw;
+    // 複合カテゴリ (A・B・C...) → CAT_COLORS にマッチする最初の要素を使う
+    const parts = raw.split(/・|、|,/).map(p => p.trim());
+    for (const part of parts) {
+      const norm = CAT_NORMALIZE[part] ?? part;
+      if (CAT_COLORS[norm]) return norm;
+    }
+    // どれもマッチしなければ先頭要素を返す（フィルタ用）
+    return CAT_NORMALIZE[parts[0]] ?? parts[0];
+  }
+
+  // 2. category フィールド直指定
+  if (item.category) return CAT_NORMALIZE[item.category] ?? item.category;
+
+  // 3. notes + name のキーワードマッチ（カテゴリ未付与アイテム用）
+  const text = (item.notes || '') + ' ' + (item.name || '');
+  if (/河童/.test(text)) return '河童';
+  if (/天狗/.test(text)) return '天狗';
+  if (/狐|狐火|九尾/.test(text)) return '狐';
+  if (/狸|ムジナ|貉/.test(text)) return '狸';
+  if (/狼|山犬/.test(text)) return '狼';
+  if (/竜|龍|竜神|竜宮/.test(text)) return '竜神';
+  if (/大蛇|蛇神|蛇女|蛇体/.test(text)) return '大蛇';
+  if (/幽霊|亡霊|死霊|怨霊/.test(text)) return '幽霊';
+  if (/鬼/.test(text)) return '鬼';
+  if (/修験|山伏/.test(text)) return '天狗';
+  if (/神社|祠|御神木/.test(text)) return '神社怪異';
+  if (/地蔵|仏|観音/.test(text)) return '地蔵';
+  if (/河伯|水神|水霊|龍神/.test(text)) return '水神';
+  if (/付喪神|器物/.test(text)) return '付喪神';
+  if (/妖術|妖狐|妖怪/.test(text)) return '妖';
+
+  return '';
 }
 
 function extractRegion(item) {

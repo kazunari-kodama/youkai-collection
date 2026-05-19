@@ -1,6 +1,12 @@
 export type ResearchStatus = 'pending' | 'reviewing' | 'approved' | 'rejected';
 export type SourceType = 'academic' | 'web' | 'oral' | 'image';
 
+export interface ResearchSource {
+  url: string;
+  title?: string;
+  snippet?: string;
+}
+
 export interface ResearchDBItem {
   research_id: string;
   status: ResearchStatus;
@@ -11,6 +17,7 @@ export interface ResearchDBItem {
   source_type?: SourceType;
   raw_content?: string;
   summary?: string;     // 旧フィールド。notes が優先される
+  sources?: ResearchSource[];  // リサーチ時の参照URL一覧。youkai_core.sources へコピーされる
   reliability_score?: number;
   originality_score?: number;
   collector_id: string;

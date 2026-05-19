@@ -59,13 +59,41 @@
     <div class="stats">
       <span class="num" id="stat-captured">0</span> / <span id="stat-total">0</span> 体
     </div>
-    <button class="faction-badge" id="faction-badge" onclick="showFactionModal()"></button>
+    <button class="faction-badge" id="faction-badge" onclick="handleBadgeClick()"></button>
+  </div>
+  <div class="faction-meter" id="faction-meter">
+    <div class="fm-seg fm-exorcist" id="fm-seg-ex">
+      <span class="fm-name">祓い手</span>
+      <span class="fm-pct" id="fm-pct-ex">--%</span>
+    </div>
+    <div class="fm-seg fm-supernatural" id="fm-seg-su">
+      <span class="fm-pct" id="fm-pct-su">--%</span>
+      <span class="fm-name">招き手</span>
+    </div>
   </div>
 </div>
 
-<button class="float-btn" id="btn-collection" onclick="openCollection()">
-  <span class="icon">📜</span>図鑑
-</button>
+<!-- Side menu panel -->
+<div class="side-menu">
+  <button class="side-btn" id="btn-collection" onclick="openCollection()">
+    <span class="side-icon">📜</span>
+    <span class="side-label">図鑑</span>
+  </button>
+  <button class="side-btn" id="btn-skills" onclick="openSkillPanel()" style="display:none">
+    <span class="side-icon">術</span>
+    <span class="side-label">スキル</span>
+  </button>
+  <button class="side-btn" id="btn-rally" onclick="openRallyEntry()">
+    <span class="side-icon">📛</span>
+    <span class="side-label" id="rally-btn-label">スタンプ</span>
+  </button>
+  <a class="side-btn" id="btn-academic" href="academic.html">
+    <span class="side-icon">🎓</span>
+    <span class="side-label">学術</span>
+  </a>
+</div>
+
+<!-- Map controls -->
 <button class="float-btn" id="btn-locate" onclick="centerOnPlayer()" title="現在地に戻る">
   <span class="icon">◎</span>
 </button>
@@ -75,14 +103,9 @@
 <button class="float-btn" id="btn-clear-collection" onclick="clearCollection()" style="display:none;">
   🗑️ 図鑑クリア
 </button>
-<button class="float-btn" id="btn-rally" onclick="openRallyEntry()">
-  <span class="icon">📛</span><span id="rally-btn-label">スタンプラリー</span>
-</button>
-<a class="float-btn" id="btn-academic" href="academic.html">
-  <span class="icon">🎓</span>学術モード
-</a>
 
 <div class="status-bar" id="status-bar">起動中…</div>
+<div id="debug-role-panel" class="debug-role-panel"></div>
 
 <!-- Unseal modal -->
 <div class="modal-overlay" id="unseal-modal">
@@ -108,6 +131,13 @@
     <img id="detail-img" src="" alt="" style="display:none; width:100%; max-height:200px; object-fit:contain; margin:12px 0;">
     <div class="modal-desc" id="detail-desc"></div>
     <div class="modal-meta" id="detail-meta"></div>
+    <div class="yokai-meter-wrap" id="yokai-meter-wrap" style="display:none">
+      <div class="yokai-meter-title">この妖怪の勢力</div>
+      <div class="yokai-meter-bar">
+        <div class="yokai-meter-fill" id="yokai-meter-fill"></div>
+      </div>
+      <div class="yokai-meter-counts" id="yokai-meter-counts"></div>
+    </div>
     <button class="btn-camera-launch" id="btn-open-camera" onclick="openCamera()">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
       妖 怪 カ メ ラ
@@ -194,6 +224,48 @@
   </div>
 </div>
 
+<!-- Role Diagnosis Quiz -->
+<div class="modal-overlay rq-overlay" id="role-quiz-modal">
+  <div class="rq-wrap">
+
+    <div id="rq-intro" class="rq-screen">
+      <div class="rq-intro-deco">魂 問 診 断</div>
+      <div class="rq-intro-text">——問う。<br><br>そなたの内に潜む、いまだ目覚めぬ何かを。<br>これより八つの問いを授ける。<br>正しき答えは、ない。<br><br>ただ、そなたが何者であるかが、<br>静かに浮かび上がるであろう。</div>
+      <button class="rq-start-btn" onclick="startQuiz()">問 い を 受 け る</button>
+    </div>
+
+    <div id="rq-question" class="rq-screen" style="display:none">
+      <div class="rq-header">
+        <span class="rq-progress">問 い <span id="rq-num">1</span> / 8</span>
+        <span class="rq-phase-label" id="rq-phase-label">陣営の問い</span>
+      </div>
+      <div class="rq-situation" id="rq-situation"></div>
+      <div class="rq-question-text" id="rq-question-text"></div>
+      <div class="rq-options" id="rq-options"></div>
+    </div>
+
+    <div id="rq-transition" class="rq-screen" style="display:none">
+      <div class="rq-tr-line">陣営の問いが、終わった。</div>
+      <div class="rq-tr-line rq-tr-sub">続いて——そなたの心を問う。</div>
+    </div>
+
+    <div id="rq-result" class="rq-screen" style="display:none">
+      <div class="rq-res-head">——問いは、終わった。</div>
+      <div class="rq-res-sub">そなたの内に視えるのは——</div>
+      <div class="rq-res-emblem" id="rq-emblem"></div>
+      <div class="rq-res-name" id="rq-role-name"></div>
+      <div class="rq-res-reading" id="rq-role-reading"></div>
+      <div class="rq-res-faction" id="rq-role-faction"></div>
+      <div class="rq-res-tagline" id="rq-role-tagline"></div>
+      <div class="rq-res-desc" id="rq-role-desc"></div>
+      <button class="rq-confirm-btn" onclick="confirmRole()">こ の 道 を 歩 む</button>
+      <button class="rq-browse-btn" onclick="browseOtherRole()">他 の 星 を 見 る</button>
+      <button class="rq-retake-btn" onclick="retakeQuiz()">初 め か ら 問 い 直 す</button>
+    </div>
+
+  </div>
+</div>
+
 <!-- Faction selection modal -->
 <div class="modal-overlay" id="faction-modal">
   <div class="modal faction-modal">
@@ -207,13 +279,42 @@
       </button>
       <button class="faction-card faction-supernatural" onclick="chooseFaction('supernatural')">
         <div class="faction-emblem">召</div>
-        <div class="faction-name">超 自 然 派</div>
-        <div class="faction-desc">妖怪を解放し、共存の道を探る。新たな時代の選択。</div>
+        <div class="faction-name">招 き 手 陣 営</div>
+        <div class="faction-desc">縫い目を開き、妖怪と共存の道を探る。新たな時代の選択。</div>
       </button>
     </div>
     <button class="btn-skip-faction" onclick="chooseFaction('exorcist')">あとで決める（祓い手として続ける）</button>
   </div>
 </div>
+
+<!-- Skill Panel modal -->
+<div class="modal-overlay" id="skill-panel-modal">
+  <div class="modal skill-panel">
+    <button class="modal-close" onclick="closeSkillPanel()">×</button>
+    <div class="skill-panel-header">
+      <div class="skill-panel-emblem" id="sp-emblem"></div>
+      <div class="skill-panel-title">
+        <div class="skill-panel-role" id="sp-role-name"></div>
+        <div class="skill-panel-rank" id="sp-rank"></div>
+      </div>
+    </div>
+    <div class="skill-list" id="skill-list"></div>
+  </div>
+</div>
+
+<!-- Skill Result mini-modal -->
+<div class="skill-result-overlay" id="skill-result-overlay" style="display:none">
+  <div class="skill-result-box" id="skill-result-box">
+    <div class="skill-result-title" id="skill-result-title"></div>
+    <div class="skill-result-body" id="skill-result-body"></div>
+    <button class="skill-result-close" onclick="closeSkillResult()">閉じる</button>
+  </div>
+</div>
+
+<!-- 紋様術 floating button (呪術師専用) -->
+<button class="float-btn monyou-btn" id="btn-monyou" onclick="activateMonyou()" style="display:none" title="紋を刻む">
+  <span style="font-family:'Shippori Mincho B1',serif;font-size:18px;letter-spacing:0.05em;">紋</span>
+</button>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>

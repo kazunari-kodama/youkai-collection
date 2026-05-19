@@ -197,6 +197,24 @@ body { font-family: 'Noto Serif JP', 'Shippori Mincho B1', serif; background: va
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* リサーチ出典 */
+.ac-sources-title {
+  font-size: 10px; letter-spacing: .2em; color: var(--ac-muted);
+  margin-top: 14px; margin-bottom: 6px;
+}
+.ac-sources-list {
+  list-style: none; display: flex; flex-direction: column; gap: 5px;
+}
+.ac-sources-list li { display: flex; align-items: baseline; gap: 6px; }
+.ac-source-index { font-size: 10px; color: var(--ac-muted); flex-shrink: 0; font-family: monospace; }
+.ac-source-link {
+  font-size: 11px; color: var(--ac-accent); word-break: break-all;
+  text-decoration: underline dotted; line-height: 1.45;
+}
+.ac-source-link:hover { color: var(--ac-text); }
+.ac-source-title { font-size: 11px; color: var(--ac-text); }
+.ac-source-snippet { font-size: 10px; color: var(--ac-muted); margin-top: 2px; line-height: 1.4; }
+
 /* Leaflet override */
 .leaflet-container { background: #111; }
 .leaflet-popup-content-wrapper {

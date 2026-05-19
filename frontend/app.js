@@ -49,6 +49,95 @@ const state = {
 const FACTION_KEY = 'yokai_faction';
 let currentFaction = localStorage.getItem(FACTION_KEY) || null;
 
+const ROLE_KEY = 'yokai_role';
+let currentRole = localStorage.getItem(ROLE_KEY) || null;
+
+const QUIZ_QUESTIONS = [
+  { id:1, phase:'F',
+    situation:'山深き村の祭りに、そなたは招かれた。\n村人らは皆、何かに怯えておるように見える。\nされど、祭りは行われる。',
+    question:'そなたは、いかにする。',
+    options:[
+      {text:'村の長に話を聞き、何に怯えておるのかを、まず知る', v:'E'},
+      {text:'怯える老人の傍らに座し、ただ静かに寄り添う', v:'E'},
+      {text:'祭りの中心に立ち、神楽の音に耳を澄ます', v:'S'},
+      {text:'怯えの源を確かめんと、一人、夜の山へ分け入る', v:'S'},
+    ]},
+  { id:2, phase:'F',
+    situation:'廃れた神社の前を、そなたは通りかかった。\n鳥居は朽ち、扉は半ば開いておる。\n内より、微かな気配が漂う。',
+    question:'そなたは、いかにする。',
+    options:[
+      {text:'鳥居の前に一礼し、扉を静かに閉じて立ち去る', v:'E'},
+      {text:'塩を撒き、結界を張り直して、その場を後にする', v:'E'},
+      {text:'扉を開け放ち、しばし、内なる気配と向き合う', v:'S'},
+      {text:'内へと足を踏み入れ、そこに在る者を確かめる', v:'S'},
+    ]},
+  { id:3, phase:'F',
+    situation:'親しき友が、近頃、様子がおかしい。\n問えば、「夜ごと、誰かに呼ばれておる気がする」と言う。',
+    question:'そなたは、いかにする。',
+    options:[
+      {text:'護符を渡し、しばし祈祷に通い、友を護る', v:'E'},
+      {text:'信頼できる社に連れゆき、祓いを受けさせる', v:'E'},
+      {text:'友と共に、その「誰か」が何者であるかを聴きにゆく', v:'S'},
+      {text:'友の感覚を否定せず、その意味を共に考える', v:'S'},
+    ]},
+  { id:4, phase:'F',
+    situation:'古の書物に、妖を扱う術が記されておる。\n読み解けば力を得られよう。されど、術には危うさが伴う。',
+    question:'そなたは、いかにする。',
+    options:[
+      {text:'全体を分析し、危うきを避ける道筋から学ぶ', v:'E'},
+      {text:'必要な時に必要な箇所のみを読み、深入りはせぬ', v:'E'},
+      {text:'書物を信ずる師に預け、共に少しずつ読み解く', v:'S'},
+      {text:'危うさも含めて全てを読み、己の内に取り込む', v:'S'},
+    ]},
+  { id:5, phase:'S',
+    situation:'目の前に、人ならぬ者が現れた。\n害をなす気配はない。されど、人ではない。',
+    question:'そなたは、いかにする。',
+    options:[
+      {text:'その性質を観察し、何者であるかを見極める', v:'C'},
+      {text:'距離を保ち、向こうから語りかけてくるのを待つ', v:'X'},
+      {text:'名を問い、何を求めて在るのかを聴く', v:'T'},
+      {text:'同じ目線まで近づき、その存在を感じ取らんとする', v:'X'},
+    ]},
+  { id:6, phase:'S',
+    situation:'',
+    question:'力を得るとは、そなたにとって、いかなることか。',
+    options:[
+      {text:'法則を理解し、この世の理を読み解けるようになること', v:'C'},
+      {text:'目の前の誰かを、確かに支えられるようになること', v:'X'},
+      {text:'力に頼らずに済む生き方を、見出すこと', v:'T'},
+      {text:'己自身が、これまでとは違う何ものかへと変じてゆくこと', v:'T'},
+    ]},
+  { id:7, phase:'S',
+    situation:'もし、明治の御代より前のごとく、\n妖と人が隣り合うて暮らす世が再び訪れるとせば——',
+    question:'そなたは、いかに思う。',
+    options:[
+      {text:'それは混乱を招く。境は保たれておるべきである', v:'C'},
+      {text:'一部は戻りてもよし。されど線引きは慎重であるべき', v:'X'},
+      {text:'喜ばしきこと。失われた豊かさが戻ろう', v:'T'},
+      {text:'完全な共存こそ、本来の在り方であった', v:'X'},
+    ]},
+  { id:8, phase:'S',
+    situation:'',
+    question:'そなたが「視える者」として、最も恐るることは何か。',
+    options:[
+      {text:'誤れる判断にて、人や妖を傷つけてしまうこと', v:'C'},
+      {text:'助くべき相手を、助けられぬこと', v:'X'},
+      {text:'力を持つことに、慣れてしまうこと', v:'T'},
+      {text:'己が「己」でなくなりてゆくこと', v:'T'},
+    ]},
+];
+
+const ROLE_INFO = {
+  onmyoji:    {kanji:'陰陽師', reading:'おんみょうじ', faction:'exorcist',    factionName:'祓い手', emblem:'陰', color:'#1e5fa8', tagline:'暦と式で秩序を読む者',         desc:'世界には法則がある。星の運行、五行の巡り、暦の節目——すべては読み解ける。妖怪もまた、その法則の中にある現象に過ぎない。理解できれば、制御できる。感情より論理、式神は道具——それが陰陽師の道。'},
+  kitoshi:    {kanji:'祈祷師', reading:'きとうし',     faction:'exorcist',    factionName:'祓い手', emblem:'祈', color:'#e8e0d0', tagline:'個別の祈りで穢れを祓う者',   desc:'理屈ではなく、祈りの力で人と土地を守る。一軒の家、一人の病者、一つの土地——目の前の具体的な誰かのために、術を尽くす。派手な術より、毎日の祈祷の積み重ねを重んじる——それが祈祷師の道。'},
+  miko:       {kanji:'神子',   reading:'みこ',         faction:'exorcist',    factionName:'祓い手', emblem:'神', color:'#c8302a', tagline:'神意を聴き、判別し、橋渡す者', desc:'神意を聴き、判別し、人と神の境を結ぶ。自らの意志を前に出すことはないが、何を伝え、何を留めるかを判別する鋭さを持つ。「これは神の声か、自分の声か」——その問いを生涯問い続ける者。'},
+  yojutsushi: {kanji:'妖術師', reading:'ようじゅつし', faction:'supernatural', factionName:'招き手', emblem:'妖', color:'#b8860b', tagline:'妖の力を借り、契約する者',   desc:'妖怪は契約相手だ。互いに利のある取り決めをすれば、共に在れる。使役でも服従でもなく、交渉——それが妖術師の矜持。妖怪を「取引相手」として尊重する。情に流されない、契約は契約。'},
+  yamabushi:  {kanji:'山伏',   reading:'やまぶし',     faction:'supernatural', factionName:'招き手', emblem:'山', color:'#2d6e3e', tagline:'自ら山に分け入り、近づく者', desc:'山に入り、滝に打たれ、火を焚く中で、人は妖に近づく。妖もまた、人に近づく。人と妖の境など、本来なかった。自らが変容することで、世界の縫い目に近づく——それが山伏の道。'},
+  jujutsushi: {kanji:'呪術師', reading:'じゅじゅつし', faction:'supernatural', factionName:'招き手', emblem:'呪', color:'#8b2fc9', tagline:'呪を編み、世界を書き換える者', desc:'言葉と象徴には力がある。呪を編み、紋を描き、名を与えることで世界は書き換えられる。妖の力もまた、写し取れる。陰陽師が「読み解く」なら、呪術師は「書き換える」——描くほど、世界はずれていく。'},
+};
+
+let _quiz = null;
+
 let map, playerMarker, rangeCircle;
 let youkaiMarkers = {};  // id -> { marker, data }
 
@@ -132,12 +221,21 @@ function initMap() {
   updateStats();
 }
 
+function _hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function capturedMarkerHtml(youkai, actionType) {
   const isBond = actionType === 'bond';
-  const border  = isBond ? '#9b59f0' : '#c8302a';
-  const glow    = isBond ? 'rgba(107,47,160,0.7)' : 'rgba(200,48,42,0.7)';
-  const ringStyle = `border-color:${border};box-shadow:0 0 14px ${glow},0 4px 8px rgba(0,0,0,0.6)`;
+  const roleInfo = currentRole && ROLE_INFO[currentRole];
+  const border  = roleInfo ? roleInfo.color : (isBond ? '#9b59f0' : '#c8302a');
+  const glow    = _hexToRgba(border, 0.7);
+  const ringStyle = `border:2px solid ${border};box-shadow:0 0 14px ${glow},0 4px 8px rgba(0,0,0,0.6)`;
   const ring = isBond ? 'bond' : 'seal';
+  console.log('[marker]', youkai.id, actionType, ring, border);
   if (youkai.camera_url) {
     return `<div class="captured-marker ${ring}" style="${ringStyle}" data-id="${youkai.id}">` +
       `<img src="${youkai.camera_url}" alt="${youkai.name}" ` +
@@ -188,6 +286,8 @@ async function handleMarkerTap(youkai) {
       if (youkai.require_qr) state.pendingQrCode = youkai.id;
       await triggerUnseal(youkai.id);
     }
+  } else if (d <= DOKAISHU_RANGE_M && currentRole === 'onmyoji') {
+    _showDokaishuOption(youkai, Math.round(d));
   } else {
     showToast(`封印まで残り ${Math.round(d)}m`);
   }
@@ -448,10 +548,34 @@ async function showDetail(youkaiId) {
   }
 
   document.getElementById('detail-modal').classList.add('show');
+
+  // 妖怪別勢力メーター（非同期・失敗しても表示に影響しない）
+  loadYokaiStats(youkaiId);
 }
 
 function closeDetail() {
   document.getElementById('detail-modal').classList.remove('show');
+}
+
+async function loadYokaiStats(youkaiId) {
+  const wrap = document.getElementById('yokai-meter-wrap');
+  wrap.style.display = 'none';
+  try {
+    const s = await apiGet(`/youkai/${encodeURIComponent(youkaiId)}/stats`);
+    const total = (s.seal_count || 0) + (s.bond_count || 0);
+    if (total === 0) {
+      document.getElementById('yokai-meter-counts').textContent = 'まだ記録なし';
+      document.getElementById('yokai-meter-fill').style.width = '50%';
+    } else {
+      const sealPct = Math.round((s.seal_count / total) * 100);
+      document.getElementById('yokai-meter-fill').style.width = sealPct + '%';
+      document.getElementById('yokai-meter-counts').textContent =
+        `封印 ${s.seal_count}件  /  共存 ${s.bond_count}件`;
+    }
+    wrap.style.display = 'block';
+  } catch {
+    // サーバーエラー時は非表示のまま
+  }
 }
 
 // --- Yokai Camera -------------------------------------------
@@ -838,16 +962,219 @@ function waitForLeaflet(callback, attempt = 0) {
   setTimeout(() => waitForLeaflet(callback, attempt + 1), 100);
 }
 
+// --- 魂問診断 (Role Quiz) --------------------------------------
+function showRoleQuiz() {
+  _quiz = { idx:0, fV:{E:0,S:0}, sV:{C:0,X:0,T:0}, tbF:null, tbS:null, result:null };
+  document.getElementById('role-quiz-modal').classList.add('show');
+  _rqShow('rq-intro');
+}
+
+function _rqShow(id) {
+  ['rq-intro','rq-question','rq-transition','rq-result'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? 'flex' : 'none';
+  });
+}
+
+function startQuiz() {
+  _rqShow('rq-question');
+  _rqRender();
+}
+
+function _rqRender() {
+  const q = QUIZ_QUESTIONS[_quiz.idx];
+  const isFact = _quiz.idx < 4;
+  document.getElementById('rq-num').textContent = q.id;
+  document.getElementById('rq-phase-label').textContent = isFact ? '陣営の問い' : '心の問い';
+  const situEl = document.getElementById('rq-situation');
+  situEl.textContent = q.situation;
+  situEl.style.display = q.situation ? '' : 'none';
+  document.getElementById('rq-question-text').textContent = q.question;
+
+  const opts = document.getElementById('rq-options');
+  opts.innerHTML = '';
+  q.options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'rq-option';
+    btn.textContent = opt.text;
+    btn.onclick = () => _rqSelect(opt.v);
+    opts.appendChild(btn);
+  });
+}
+
+function _rqSelect(v) {
+  if (_quiz.idx < 4) {
+    _quiz.fV[v]++;
+    if (_quiz.idx === 3) _quiz.tbF = v;
+  } else {
+    _quiz.sV[v]++;
+    if (_quiz.idx === 7) _quiz.tbS = v;
+  }
+  _quiz.idx++;
+
+  if (_quiz.idx === 4) {
+    _rqShow('rq-transition');
+    setTimeout(() => { _rqShow('rq-question'); _rqRender(); }, 2400);
+  } else if (_quiz.idx === 8) {
+    _rqCalcResult();
+  } else {
+    _rqRender();
+  }
+}
+
+function _rqCalcResult() {
+  const { fV, sV, tbF, tbS } = _quiz;
+
+  let faction;
+  if (fV.E !== fV.S)       faction = fV.E > fV.S ? 'exorcist' : 'supernatural';
+  else                      faction = tbF === 'E' ? 'exorcist' : 'supernatural';
+
+  const maxS = Math.max(sV.C, sV.X, sV.T);
+  const nTied = Object.values(sV).filter(v => v === maxS).length;
+  let style;
+  if (nTied === 1)          style = sV.C === maxS ? 'control' : sV.X === maxS ? 'coexist' : 'transform';
+  else                      style = tbS === 'C' ? 'control' : tbS === 'X' ? 'coexist' : 'transform';
+
+  const ROLE_MAP = {
+    'exorcist-control':'onmyoji', 'exorcist-coexist':'kitoshi', 'exorcist-transform':'miko',
+    'supernatural-control':'yojutsushi', 'supernatural-coexist':'yamabushi', 'supernatural-transform':'jujutsushi',
+  };
+  const role = ROLE_MAP[`${faction}-${style}`];
+  _quiz.result = { role, faction };
+
+  const info = ROLE_INFO[role];
+  const emblemEl = document.getElementById('rq-emblem');
+  emblemEl.textContent = info.emblem;
+  emblemEl.style.color = info.color;
+  emblemEl.style.borderColor = info.color;
+  document.getElementById('rq-role-name').textContent = info.kanji;
+  document.getElementById('rq-role-reading').textContent = `（${info.reading}）`;
+  const factionEl = document.getElementById('rq-role-faction');
+  factionEl.textContent = info.factionName + '陣営';
+  factionEl.style.color = faction === 'exorcist' ? '#c8302a' : '#9b59f0';
+  document.getElementById('rq-role-tagline').textContent = info.tagline;
+  document.getElementById('rq-role-desc').textContent = info.desc;
+
+  _rqShow('rq-result');
+}
+
+function confirmRole() {
+  const { role, faction } = _quiz.result;
+  currentRole    = role;
+  currentFaction = faction;
+  localStorage.setItem(ROLE_KEY,    role);
+  localStorage.setItem(FACTION_KEY, faction);
+  document.getElementById('role-quiz-modal').classList.remove('show');
+  updateFactionHUD();
+  _initSkillUI();
+  showToast(`${ROLE_INFO[role].kanji}の道を歩む`);
+}
+
+function retakeQuiz() {
+  _quiz = { idx:0, fV:{E:0,S:0}, sV:{C:0,X:0,T:0}, tbF:null, tbS:null, result:null };
+  _rqShow('rq-intro');
+}
+
+function browseOtherRole() {
+  if (!_quiz?.result) return;
+  const roles = Object.keys(ROLE_INFO);
+  const idx = roles.indexOf(_quiz.result.role);
+  const next = roles[(idx + 1) % roles.length];
+  const info = ROLE_INFO[next];
+  _quiz.result = { role: next, faction: info.faction };
+  const emblemEl = document.getElementById('rq-emblem');
+  emblemEl.textContent = info.emblem;
+  emblemEl.style.color = info.color;
+  emblemEl.style.borderColor = info.color;
+  document.getElementById('rq-role-name').textContent = info.kanji;
+  document.getElementById('rq-role-reading').textContent = `（${info.reading}）`;
+  const factionEl = document.getElementById('rq-role-faction');
+  factionEl.textContent = info.factionName + '陣営';
+  factionEl.style.color = info.faction === 'exorcist' ? '#c8302a' : '#9b59f0';
+  document.getElementById('rq-role-tagline').textContent = info.tagline;
+  document.getElementById('rq-role-desc').textContent = info.desc;
+}
+
+// --- 全国勢力メーター ------------------------------------------
+async function refreshGlobalStats() {
+  try {
+    const s = await apiGet('/stats/global');
+    const total = s.total || 0;
+    const meter = document.getElementById('faction-meter');
+    if (total === 0) return;
+
+    const exPct  = Math.round((s.exorcist / total) * 100);
+    const suPct  = 100 - exPct;
+
+    document.getElementById('fm-seg-ex').style.flex = exPct;
+    document.getElementById('fm-seg-su').style.flex = suPct;
+    document.getElementById('fm-pct-ex').textContent = exPct + '%';
+    document.getElementById('fm-pct-su').textContent = suPct + '%';
+    meter.classList.add('loaded');
+  } catch {
+    // 失敗時はメーターを非表示のまま
+  }
+}
+
+// --- Debug role switcher ----------------------------------------
+function handleBadgeClick() {
+  if (state.debugMode) {
+    toggleDebugRolePanel();
+  } else {
+    showRoleQuiz();
+  }
+}
+
+function toggleDebugRolePanel() {
+  const panel = document.getElementById('debug-role-panel');
+  if (panel.classList.contains('show')) {
+    panel.classList.remove('show');
+    return;
+  }
+  let html = '<div class="drp-title">ロール切替 [DEV]</div>';
+  Object.entries(ROLE_INFO).forEach(([key, info]) => {
+    const isActive = currentRole === key;
+    html += `<button class="drp-btn${isActive ? ' drp-active' : ''}"
+      style="border-color:${info.color}${isActive ? ';background:' + info.color + '22' : ''}"
+      onclick="setRoleDebug('${key}')">
+      <span class="drp-emblem" style="color:${info.color}">${info.emblem}</span>
+      <span class="drp-name">${info.kanji}</span>
+      <span class="drp-faction" style="color:${info.faction === 'exorcist' ? '#c8302a' : '#9b59f0'}">${info.factionName}</span>
+    </button>`;
+  });
+  panel.innerHTML = html;
+  panel.classList.add('show');
+}
+
+function setRoleDebug(role) {
+  const info = ROLE_INFO[role];
+  currentRole    = role;
+  currentFaction = info.faction;
+  localStorage.setItem(ROLE_KEY,    role);
+  localStorage.setItem(FACTION_KEY, info.faction);
+  document.getElementById('debug-role-panel').classList.remove('show');
+  updateFactionHUD();
+  _initSkillUI();
+  Object.keys(capturedIds).length > 0 &&
+    Object.values(youkaiMarkers).forEach(({ data }) => {
+      if (capturedIds.has(data.id)) refreshMarker(data.id);
+    });
+  showToast(`[DEV] ${info.kanji}（${info.factionName}）に切替`);
+}
+
 // --- Faction management ----------------------------------------
 function updateFactionHUD() {
   const badge = document.getElementById('faction-badge');
   if (!badge) return;
-  if (currentFaction === 'supernatural') {
-    badge.textContent = '超自然派';
-    badge.className = 'faction-badge supernatural';
+  const info = currentRole && ROLE_INFO[currentRole];
+  if (info) {
+    badge.textContent = info.kanji;
+    badge.className   = 'faction-badge ' + (info.faction === 'supernatural' ? 'supernatural' : 'exorcist');
+  } else if (currentFaction === 'supernatural') {
+    badge.textContent = '招き手';
+    badge.className   = 'faction-badge supernatural';
   } else {
     badge.textContent = '祓い手';
-    badge.className = 'faction-badge exorcist';
+    badge.className   = 'faction-badge exorcist';
   }
 }
 
@@ -860,7 +1187,7 @@ function chooseFaction(f) {
   localStorage.setItem(FACTION_KEY, f);
   document.getElementById('faction-modal').classList.remove('show');
   updateFactionHUD();
-  showToast(f === 'supernatural' ? '超自然派として歩む道を選んだ' : '祓い手として封印の道を歩む');
+  showToast(f === 'supernatural' ? '招き手として縫い目を開く道を歩む' : '祓い手として封印の道を歩む');
 }
 
 async function dismissIntro() {
@@ -874,7 +1201,9 @@ async function dismissIntro() {
       startGeolocation();
       await restoreRallyFromStorage();
     });
-    if (!currentFaction) showFactionModal();
+    if (!currentRole) showRoleQuiz();
+    refreshGlobalStats();
+    setInterval(refreshGlobalStats, 5 * 60 * 1000);
   }, 600);
 }
 
@@ -969,7 +1298,7 @@ function updateRallyStats() {
     label.textContent = `スタンプ ${rallyState.capturedIds.size}/${rallyState.yokai.length}`;
   } else {
     btn.classList.remove('active');
-    label.textContent = 'スタンプラリー';
+    label.textContent = 'スタンプ';
   }
 }
 
@@ -1148,3 +1477,334 @@ document.querySelectorAll('.modal-overlay').forEach((m) => {
     }
   });
 });
+
+// ============================================================
+// スキルシステム
+// ============================================================
+
+const DOKAISHU_RANGE_M = 50;
+
+const SKILL_DEFS = {
+  onmyoji: [
+    { id: 'dokaishu',  name: '読解術',   desc: '未封印の妖の正体・属性を読み解く。封印圏（13m）より広い50m圏内で発動。', locationBased: true },
+    { id: 'shikigami', name: '式神術',   desc: '封印した妖怪を式神化し使役する。封印済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'kekkai',    name: '結界術',   desc: '3体以上の封印位置が三角を成すと結界が発動し、地図上に表示される。', locationBased: false },
+  ],
+  jujutsushi: [
+    { id: 'kotodama',    name: '言霊術',    desc: '契約した妖怪の真名を解き明かす。契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'monyou',      name: '紋様術',    desc: '現在地に紋様を刻む。1日1回、地図左下のボタンから発動。', locationBased: true },
+    { id: 'utsushidori', name: '写し取り',  desc: '契約した妖怪の力（属性キーワード）を己の内に写し取る。', locationBased: false },
+  ],
+};
+
+const ROLE_JOB = {
+  onmyoji: 'onmyoji', kitoshi: null, miko: null,
+  yojutsushi: null, yamabushi: null, jujutsushi: 'jujutsushi',
+};
+
+function _currentJob() {
+  if (!currentRole) return null;
+  return ROLE_JOB[currentRole] ?? null;
+}
+
+function _initSkillUI() {
+  const job = _currentJob();
+  document.getElementById('btn-skills').style.display = job ? '' : 'none';
+  document.getElementById('btn-monyou').style.display = (job === 'jujutsushi') ? '' : 'none';
+  if (job === 'onmyoji') _checkAndRenderKekkai();
+}
+
+// ---- スキルパネル ------------------------------------------
+function openSkillPanel() {
+  const job = _currentJob();
+  if (!job) return;
+  const info = ROLE_INFO[currentRole];
+  document.getElementById('sp-emblem').textContent = info.emblem;
+  document.getElementById('sp-emblem').style.borderColor = info.color;
+  document.getElementById('sp-emblem').style.color = info.color;
+  document.getElementById('sp-role-name').textContent = info.kanji;
+  document.getElementById('sp-rank').textContent = `EXP積算中`;
+
+  const defs = SKILL_DEFS[job] ?? [];
+  let html = '';
+  defs.forEach((sk) => {
+    const isBtnColor = (job === 'jujutsushi') ? 'juju-btn' : '';
+    const locationNote = sk.locationBased
+      ? '<div style="font-size:10px;color:#888;letter-spacing:0.05em;margin-top:4px;">※ 位置情報が必要</div>'
+      : '';
+    const actionBtn = sk.locationBased
+      ? `<button class="skill-action-btn ${isBtnColor}" disabled>地図・ボタンから発動</button>`
+      : `<button class="skill-action-btn ${isBtnColor}" onclick="openCollectionForSkill('${sk.id}')">コレクションから発動</button>`;
+
+    html += `
+      <div class="skill-card">
+        <div class="skill-card-header">
+          <div class="skill-name">${sk.name}</div>
+          <div class="skill-badge ready">習得済</div>
+        </div>
+        <div class="skill-desc">${sk.desc}</div>
+        ${locationNote}
+        ${actionBtn}
+      </div>`;
+  });
+
+  document.getElementById('skill-list').innerHTML = html;
+  document.getElementById('skill-panel-modal').classList.add('show');
+}
+
+function closeSkillPanel() {
+  document.getElementById('skill-panel-modal').classList.remove('show');
+}
+
+function openCollectionForSkill(skillId) {
+  closeSkillPanel();
+  openCollection(skillId);
+}
+
+// ---- スキル結果 -------------------------------------------
+function showSkillResult(title, body) {
+  document.getElementById('skill-result-title').textContent = title;
+  document.getElementById('skill-result-body').textContent = body;
+  document.getElementById('skill-result-overlay').style.display = 'flex';
+}
+
+function closeSkillResult() {
+  document.getElementById('skill-result-overlay').style.display = 'none';
+}
+
+// ---- 読解術 (陰陽師・マーカータップ時) ----------------------
+function _showDokaishuOption(youkai, dist) {
+  const popup = L.popup({ closeButton: true, className: 'dokaishu-popup-wrap' })
+    .setLatLng([youkai.lat, youkai.lon])
+    .setContent(`
+      <div class="dokaishu-popup">
+        <div class="dokaishu-popup-title">陰陽師の視界（残り ${dist}m）</div>
+        <button class="dokaishu-popup-btn" onclick="activateDokaishu('${youkai.id}')">読 解 す る</button>
+        <div style="font-size:10px;color:#888;margin-top:4px;text-align:center;">
+          封印は13m以内で可能
+        </div>
+      </div>`)
+    .openOn(map);
+}
+
+async function activateDokaishu(youkaiId) {
+  map.closePopup();
+  if (!state.playerPos) { showToast('現在地不明'); return; }
+  showToast('読解術を発動…');
+  const res = await apiPost('/skill/dokaishu', {
+    deviceId: DEVICE_ID,
+    youkaiId,
+    userLat: state.playerPos.lat,
+    userLon: state.playerPos.lon,
+  });
+  if (!res.ok) {
+    const msg = res.data?.error ?? 'エラー';
+    showToast(`読解術失敗: ${msg}`);
+    return;
+  }
+  const d = res.data;
+  const tags = (d.category_tags ?? []).join('・') || 'なし';
+  const kws  = (d.keywords ?? []).slice(0, 5).join('、') || 'なし';
+  showSkillResult(
+    `読 解 術 — ${d.name}`,
+    `読み：${d.kana || '不明'}\n\n属性：${tags}\n\nキーワード：${kws}\n\n（EXP +${d.exp_gained}）`,
+  );
+}
+
+// ---- 式神術 (コレクションから) ------------------------------
+async function activateShikigami(youkaiId) {
+  const res = await apiPost('/skill/shikigami', { deviceId: DEVICE_ID, youkaiId });
+  if (!res.ok) {
+    showToast(`式神術失敗: ${res.data?.error ?? 'エラー'}`);
+    return;
+  }
+  const d = res.data;
+  showSkillResult(
+    '式 神 術 発 動',
+    `式神として登録された。\n\n現在の式神数：${d.shikigami_count} / ${d.max_slots}\n\n（EXP +${d.exp_gained}）`,
+  );
+}
+
+// ---- 結界術 (自動チェック・地図表示) -----------------------
+let _kekkaiLayers = [];
+
+async function _checkAndRenderKekkai() {
+  if (currentRole !== 'onmyoji') return;
+  const data = await apiGet(`/skill/kekkai?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
+  if (!data) return;
+
+  _kekkaiLayers.forEach((l) => map.removeLayer(l));
+  _kekkaiLayers = [];
+
+  if (data.kekkais?.length) {
+    data.kekkais.forEach((k) => {
+      const pts = k.yokai_ids.map((id) => {
+        const item = youkaiMarkers[id];
+        return item ? [item.data.lat, item.data.lon] : null;
+      }).filter(Boolean);
+      if (pts.length < 3) return;
+      const poly = L.polygon(pts, {
+        color: '#1e5fa8',
+        fillColor: '#1e5fa8',
+        fillOpacity: 0.12,
+        weight: 1.5,
+        dashArray: '6 4',
+      }).addTo(map);
+      _kekkaiLayers.push(poly);
+    });
+
+    const hint = document.querySelector('.kekkai-hint');
+    if (!hint) {
+      const el = document.createElement('div');
+      el.className = 'kekkai-hint';
+      el.textContent = `結界 ${data.kekkais.length}陣 展開中`;
+      document.body.appendChild(el);
+    }
+  }
+}
+
+// ---- 言霊術 (コレクションから) ------------------------------
+async function activateKotodama(youkaiId) {
+  const res = await apiPost('/skill/kotodama', { deviceId: DEVICE_ID, youkaiId });
+  if (!res.ok) {
+    showToast(`言霊術失敗: ${res.data?.error ?? 'エラー'}`);
+    return;
+  }
+  const d = res.data;
+  const already = d.already_learned ? '（既習得）\n\n' : '';
+  showSkillResult(
+    '言 霊 術 — 真 名 解 明',
+    `${already}真名：${d.kana || '不明'}\n\n伝承の断片：\n${d.lore || '（記録なし）'}…\n\n（EXP +${d.exp_gained ?? 0}）`,
+  );
+}
+
+// ---- 紋様術 (地図フローティングボタン) ----------------------
+async function activateMonyou() {
+  if (!state.playerPos) { showToast('現在地を取得してください'); return; }
+  if (currentRole !== 'jujutsushi') return;
+  const res = await apiPost('/skill/monyou', {
+    deviceId: DEVICE_ID,
+    userLat: state.playerPos.lat,
+    userLon: state.playerPos.lon,
+  });
+  if (!res.ok) {
+    const msg = res.data?.error === 'Daily limit reached'
+      ? '今日の紋様術はすでに発動した'
+      : `紋様術失敗: ${res.data?.error ?? 'エラー'}`;
+    showToast(msg);
+    return;
+  }
+  const d = res.data;
+  const exp = new Date(d.expires_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  showSkillResult(
+    '紋 様 術 — 刻 印',
+    `この地に紋様を刻んだ。\n\n有効期限：${exp} まで\n\n（EXP +${d.exp_gained}）`,
+  );
+  _renderNearbyMonyou();
+}
+
+async function _renderNearbyMonyou() {
+  if (!state.playerPos) return;
+  const { lat, lon } = state.playerPos;
+  const data = await apiGet(`/skill/monyou/nearby?lat=${lat}&lon=${lon}&r=500`).catch(() => null);
+  if (!data?.patterns?.length) return;
+  data.patterns.forEach((p) => {
+    L.circleMarker([p.lat, p.lon], {
+      radius: 6,
+      color: '#8b2fc9',
+      fillColor: '#c87ef0',
+      fillOpacity: 0.6,
+      weight: 1,
+    }).bindTooltip(`紋〔${p.author}〕`, { permanent: false }).addTo(map);
+  });
+}
+
+// ---- 写し取り (コレクションから) ---------------------------
+async function activateUtsushidori(youkaiId, keyword) {
+  const res = await apiPost('/skill/utsushidori', { deviceId: DEVICE_ID, youkaiId, keyword });
+  if (!res.ok) {
+    showToast(`写し取り失敗: ${res.data?.error ?? 'エラー'}`);
+    return;
+  }
+  const d = res.data;
+  showSkillResult(
+    '写 し 取 り',
+    `${d.effect}\n\n現在の写し取り：\n${(d.copied_powers ?? []).join('、') || 'なし'}\n\n（EXP +${d.exp_gained}）`,
+  );
+}
+
+// ---- コレクション改修（スキルボタン追加） -------------------
+// openCollection を上書きしてスキルモードを追加
+const _origOpenCollection = openCollection;
+openCollection = function(skillId = null) {
+  const job = _currentJob();
+  const content = document.getElementById('collection-content');
+  let html = '<div class="collection-grid">';
+
+  youkaiData.forEach((y) => {
+    const actionType = capturedIds.get(y.id);
+    const captured = actionType !== undefined;
+    if (!captured) {
+      html += `
+        <div class="collection-card locked">
+          <div class="ck-glyph">？</div>
+          <div class="ck-name">？？？</div>
+          <div class="ck-dist">○ 未発見</div>
+        </div>`;
+      return;
+    }
+
+    // スキルボタン
+    let skillBtn = '';
+    if (skillId === 'shikigami' && actionType === 'seal' && job === 'onmyoji') {
+      skillBtn = `<button class="skill-action-btn" style="margin-top:4px;font-size:10px;padding:5px"
+        onclick="event.stopPropagation();activateShikigami('${y.id}')">式神化する</button>`;
+    } else if (skillId === 'kotodama' && actionType === 'bond' && job === 'jujutsushi') {
+      skillBtn = `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px"
+        onclick="event.stopPropagation();activateKotodama('${y.id}')">真名を解く</button>`;
+    } else if (skillId === 'utsushidori' && actionType === 'bond' && job === 'jujutsushi') {
+      // キーワードが無い場合はボタン非表示（詳細取得が必要なため簡略化）
+      skillBtn = `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px"
+        onclick="event.stopPropagation();openUtsushidoriPicker('${y.id}')">力を写し取る</button>`;
+    }
+
+    html += `
+      <div class="collection-card" ${!skillId ? `onclick="closeCollectionAndDetail('${y.id}')"` : ''}>
+        <div class="ck-img"><img src="${y.camera_url}" alt="${y.name}" onerror="this.style.display='none'"></div>
+        <div class="ck-name">${y.name}</div>
+        ${actionType === 'bond' ? '<div style="font-size:9px;color:#9b59f0;letter-spacing:0.1em">契約済</div>' : ''}
+        ${skillBtn}
+      </div>`;
+  });
+
+  html += '</div>';
+  if (skillId) {
+    const SKILL_NAMES = { shikigami:'式神術', kotodama:'言霊術', utsushidori:'写し取り' };
+    html = `<div style="font-family:'Shippori Mincho B1',serif;font-size:13px;letter-spacing:0.15em;color:var(--gold);text-align:center;margin-bottom:12px;">
+      ${SKILL_NAMES[skillId] || ''} — 対象を選べ</div>` + html;
+  }
+  content.innerHTML = html;
+  document.getElementById('collection-modal').classList.add('show');
+};
+
+// ---- 写し取り対象キーワード選択 ----------------------------
+async function openUtsushidoriPicker(youkaiId) {
+  const detail = await apiGet(`/youkai/${encodeURIComponent(youkaiId)}`).catch(() => null);
+  if (!detail?.keywords?.length) { showToast('この妖怪にはキーワードがありません'); return; }
+
+  const keywords = detail.keywords.slice(0, 6);
+  let btnHtml = keywords.map((kw) =>
+    `<button class="skill-action-btn juju-btn" style="margin-bottom:6px"
+      onclick="activateUtsushidori('${youkaiId}','${kw.replace(/'/g, '')}')">
+      ${kw}
+    </button>`).join('');
+
+  showSkillResult(
+    '写 し 取 る 力 を 選 べ',
+    '',
+  );
+  document.getElementById('skill-result-body').innerHTML = btnHtml;
+}
+
+// 全 const/関数が定義された後でスキルUIを初期化
+_initSkillUI();

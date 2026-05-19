@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, CAPTURES_TABLE } from '../lib/dynamodb';
+import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
 import { distanceMeters } from '../lib/distance';
 import type { YokaiDBItem } from '../types/youkai';
 
@@ -83,5 +83,47 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   await ddb.send(new PutCommand({ TableName: CAPTURES_TABLE, Item: captureItem }));
 
+  updatePlayerProfile(deviceId, body.faction ?? 'exorcist').catch((e) =>
+    console.error('profile update failed', e),
+  );
+
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ success: true }) };
 };
+
+function computeRank(exp: number): string {
+  if (exp >= 2000) return 'S';
+  if (exp >= 500)  return 'A';
+  if (exp >= 100)  return 'B';
+  return 'C';
+}
+
+async function updatePlayerProfile(deviceId: string, faction: Faction) {
+  const job = faction === 'supernatural' ? 'jujutsushi' : 'onmyoji';
+
+  const res = await ddb.send(new UpdateCommand({
+    TableName: PLAYER_PROFILE_TABLE,
+    Key: { deviceId },
+    UpdateExpression:
+      'SET #faction = if_not_exists(#faction, :f), #job = if_not_exists(#job, :j), updated_at = :now ADD exp :gain',
+    ExpressionAttributeNames: { '#faction': 'faction', '#job': 'job' },
+    ExpressionAttributeValues: {
+      ':f': faction,
+      ':j': job,
+      ':now': new Date().toISOString(),
+      ':gain': 10,
+    },
+    ReturnValues: 'ALL_NEW',
+  }));
+
+  const newExp = (res.Attributes?.exp as number) ?? 0;
+  const newRank = computeRank(newExp);
+  if (newRank !== res.Attributes?.rank) {
+    await ddb.send(new UpdateCommand({
+      TableName: PLAYER_PROFILE_TABLE,
+      Key: { deviceId },
+      UpdateExpression: 'SET #rank = :r',
+      ExpressionAttributeNames: { '#rank': 'rank' },
+      ExpressionAttributeValues: { ':r': newRank },
+    }));
+  }
+}

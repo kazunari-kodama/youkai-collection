@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, RESEARCH_TABLE } from '../lib/dynamodb';
 import { resolveRole } from '../lib/auth';
-import type { ResearchDBItem, SourceType } from '../types/research';
+import type { ResearchDBItem, ResearchSource, SourceType } from '../types/research';
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -59,6 +59,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (typeof body.latitude === 'number')           item.latitude = body.latitude;
   if (typeof body.longitude === 'number')          item.longitude = body.longitude;
   if (Array.isArray(body.media_attachments))       item.media_attachments = body.media_attachments as string[];
+  if (Array.isArray(body.sources)) {
+    item.sources = (body.sources as ResearchSource[]).filter(
+      s => s && typeof s.url === 'string' && s.url.trim()
+    );
+  }
 
   await ddb.send(new PutCommand({ TableName: RESEARCH_TABLE, Item: item }));
 
