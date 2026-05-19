@@ -42,11 +42,13 @@ html, body {
 /* Side menu panel */
 .side-menu {
   position: fixed;
-  top: 68px;
+  top: 0;
+  bottom: 0;
   right: 8px;
   z-index: 999;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 6px;
 }
 .side-btn {
@@ -89,7 +91,7 @@ html, body {
   color: var(--paper);
 }
 @media (max-width: 480px) {
-  .side-menu { top: 62px; right: 6px; }
+  .side-menu { right: 6px; }
   .side-btn { width: 50px; padding: 7px 3px; }
   .side-icon { font-size: 15px; }
 }
