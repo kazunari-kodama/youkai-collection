@@ -1572,7 +1572,13 @@ html, body {
 /* ======================================================
    Skill Panel
    ====================================================== */
-.skill-panel { max-height: 90vh; overflow-y: auto; }
+.skill-panel {
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--ink-soft);
+  color: var(--paper-aged);
+}
+.skill-panel .modal-close { color: var(--paper-aged); }
 
 .skill-panel-header {
   display: flex;
