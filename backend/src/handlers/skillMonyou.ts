@@ -23,7 +23,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 };
 
 async function handleCreate(event: Parameters<APIGatewayProxyHandler>[0]) {
-  let body: { deviceId?: string; userLat?: number; userLon?: number };
+  let body: { deviceId?: string; userLat?: number; userLon?: number; debug?: boolean };
   try {
     body = JSON.parse(event.body ?? '');
   } catch {
@@ -41,7 +41,7 @@ async function handleCreate(event: Parameters<APIGatewayProxyHandler>[0]) {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Job mismatch: jujutsushi required' }) };
   }
   // 術力チェック
-  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_monyou);
+  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_monyou, !!body.debug);
   if (!jutsuResult.ok) {
     return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
       error: 'Insufficient jutsuriyoku', current: jutsuResult.current, required: JUTSU_COST.skill_monyou, max: jutsuResult.max,

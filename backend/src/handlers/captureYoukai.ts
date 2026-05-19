@@ -82,7 +82,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const newProg   = prevProg + 1;
     const now       = new Date().toISOString();
 
-    const jutsu = await deductJutsu(deviceId, JUTSU_COST.bond);
+    const jutsu = await deductJutsu(deviceId, JUTSU_COST.bond, !!body.debug);
     if (!jutsu.ok) {
       return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
         error: 'Insufficient jutsuriyoku', current: jutsu.current, required: JUTSU_COST.bond, max: jutsu.max,

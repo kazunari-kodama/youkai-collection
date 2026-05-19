@@ -39,10 +39,11 @@ export function calcCurrentJutsu(profile: Partial<JutsuProfile>): number {
 }
 
 /** 術力を current に更新してコストを引き、DynamoDB に保存する。
- *  足りなければ false を返す（引かない）。 */
+ *  足りなければ false を返す（引かない）。debug=true のとき消費をスキップ。 */
 export async function deductJutsu(
   deviceId: string,
   cost: number,
+  debug = false,
 ): Promise<{ ok: boolean; current: number; max: number }> {
   const res = await ddb.send(new GetCommand({
     TableName: PLAYER_PROFILE_TABLE,
@@ -51,6 +52,8 @@ export async function deductJutsu(
   const profile = (res.Item ?? {}) as Partial<JutsuProfile>;
   const current = calcCurrentJutsu(profile);
   const max     = maxJutsu(profile.rank ?? 'C');
+
+  if (debug) return { ok: true, current, max };
 
   if (current < cost) return { ok: false, current, max };
 

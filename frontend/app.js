@@ -150,10 +150,11 @@ async function apiGet(path) {
 }
 
 async function apiPost(path, body) {
+  const payload = state.debugMode ? { ...body, debug: true } : body;
   const res = await fetch(API_BASE_URL + path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
   return { ok: res.ok, status: res.status, data: await res.json() };
 }

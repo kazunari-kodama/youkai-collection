@@ -13,7 +13,7 @@ const HEADERS = {
 };
 
 export const handler: APIGatewayProxyHandler = async (event) => {
-  let body: { deviceId?: string; youkaiId?: string; keyword?: string };
+  let body: { deviceId?: string; youkaiId?: string; keyword?: string; debug?: boolean };
   try {
     body = JSON.parse(event.body ?? '');
   } catch {
@@ -32,7 +32,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Job mismatch: jujutsushi required' }) };
   }
   // 術力チェック
-  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_utsushidori);
+  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_utsushidori, !!body.debug);
   if (!jutsuResult.ok) {
     return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
       error: 'Insufficient jutsuriyoku', current: jutsuResult.current, required: JUTSU_COST.skill_utsushidori, max: jutsuResult.max,
