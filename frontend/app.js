@@ -491,7 +491,7 @@ async function confirmCapture() {
     youkaiId: detail.id,
     userLat: state.playerPos.lat,
     userLon: state.playerPos.lon,
-    actionType: isSupernatural ? 'bond' : 'seal',
+    actionType: 'seal',
     faction: currentFaction ?? 'exorcist',
   };
   if (detail.rally_key) captureBody.rallyKey = detail.rally_key;
