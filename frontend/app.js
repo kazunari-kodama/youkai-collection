@@ -1870,7 +1870,7 @@ openCollection = function(skillId = null) {
       <div class="collection-card" ${!skillId ? `onclick="closeCollectionAndDetail('${y.id}')"` : ''}>
         <div class="ck-img"><img src="${y.camera_url}" alt="${y.name}" onerror="this.style.display='none'"></div>
         <div class="ck-name">${y.name}</div>
-        ${actionType === 'bond' ? '<div style="font-size:9px;color:#9b59f0;letter-spacing:0.1em">契約済</div>' : ''}
+        ${actionType === 'bond' ? '<div class="ck-status-badge bond">契約済</div>' : actionType === 'seal' ? '<div class="ck-status-badge seal">封印済</div>' : ''}
         ${skillBtn}
       </div>`;
   });
