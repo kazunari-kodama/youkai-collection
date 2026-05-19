@@ -1687,7 +1687,21 @@ html, body {
 .skill-action-btn.juju-btn {
   border-color: #8b2fc9;
 }
-.skill-action-btn.juju-btn:hover { background: #8b2fc9; }
+.skill-action-btn.juju-btn:hover { background: #8b2fc9; color: #fff; }
+
+/* collection card context — light bg, so use dark text */
+.collection-card .skill-action-btn {
+  color: var(--vermilion);
+}
+.collection-card .skill-action-btn.juju-btn {
+  color: #8b2fc9;
+}
+.collection-card .skill-action-btn:hover {
+  color: var(--paper);
+}
+.collection-card .skill-action-btn.juju-btn:hover {
+  color: #fff;
+}
 
 /* Skill result overlay */
 .skill-result-overlay {
