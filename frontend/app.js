@@ -1584,9 +1584,22 @@ const SKILL_DEFS = {
     { id: 'dokaishu',  name: '読解術',   desc: '未封印の妖の正体・属性を読み解く。封印圏（13m）より広い50m圏内で発動。', locationBased: true },
     { id: 'shikigami', name: '式神術',   desc: '封印した妖怪を式神化し使役する。封印済みの妖怪からコレクション画面で発動。', locationBased: false },
     { id: 'kekkai',    name: '結界術',   desc: '3体以上の封印位置が三角を成すと結界が発動し、地図上に表示される。', locationBased: false },
+    { id: 'reveal',    name: '霊視',     desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+  ],
+  kitoshi: [
+    { id: 'reveal',    name: '祈視',     desc: '祈りの力で妖怪の真名・伝承・出没地を見通す。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+  ],
+  miko: [
+    { id: 'reveal',    name: '神降',     desc: '神の力を借りて妖怪の真名・伝承・出没地を顕現させる。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+  ],
+  yojutsushi: [
+    { id: 'reveal',    name: '妖眼',     desc: '妖術の眼で妖怪の真の姿・伝承・出没地を看破する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+  ],
+  yamabushi: [
+    { id: 'reveal',    name: '験視',     desc: '山岳修行で得た験力で妖怪の真名・伝承・出没地を見抜く。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   jujutsushi: [
-    { id: 'kotodama',    name: '言霊術',    desc: '契約した妖怪の真名を解き明かす。契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'reveal',      name: '言霊術',    desc: '言霊の力で妖怪の真名・伝承・出没地を解き明かす。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
     { id: 'monyou',      name: '紋様術',    desc: '現在地に紋様を刻む。1日1回、地図左下のボタンから発動。', locationBased: true },
     { id: 'utsushidori', name: '写し取り',  desc: '契約した妖怪の力（属性キーワード）を己の内に写し取る。', locationBased: false },
   ],
@@ -1621,16 +1634,11 @@ function openSkillPanel() {
   document.getElementById('sp-role-name').textContent = info.kanji;
   document.getElementById('sp-rank').textContent = `EXP積算中`;
 
-  const defs = job ? (SKILL_DEFS[job] ?? []) : [];
+  const defs = SKILL_DEFS[currentRole] ?? [];
+  const SUPERNATURAL_ROLES = ['yojutsushi', 'yamabushi', 'jujutsushi'];
   let html = '';
-  if (!job) {
-    html = `<div style="text-align:center;padding:24px 8px;color:#888;font-size:13px;line-height:1.8;">
-      ${info.kanji}のスキルは<br>近日実装予定です。<br><br>
-      <span style="font-size:11px;color:#666;">陰陽師・呪術師のスキルが先行実装中</span>
-    </div>`;
-  }
   defs.forEach((sk) => {
-    const isBtnColor = (job === 'jujutsushi') ? 'juju-btn' : '';
+    const isBtnColor = SUPERNATURAL_ROLES.includes(currentRole) ? 'juju-btn' : '';
     const locationNote = sk.locationBased
       ? '<div style="font-size:10px;color:#888;letter-spacing:0.05em;margin-top:4px;">※ 位置情報が必要</div>'
       : '';
@@ -1768,23 +1776,24 @@ async function _checkAndRenderKekkai() {
   }
 }
 
-// ---- 言霊術 (コレクションから) ------------------------------
-async function activateKotodama(youkaiId) {
-  const res = await apiPost('/skill/kotodama', { deviceId: DEVICE_ID, youkaiId });
+// ---- 真名解明スキル (全ロール) ------------------------------
+async function activateReveal(youkaiId) {
+  const revealSkill = currentRole && (SKILL_DEFS[currentRole] ?? []).find((s) => s.id === 'reveal');
+  const skillName = revealSkill?.name ?? '真名解明';
+  const res = await apiPost('/skill/reveal', { deviceId: DEVICE_ID, youkaiId });
   if (!res.ok) {
-    showToast(`言霊術失敗: ${res.data?.error ?? 'エラー'}`);
+    showToast(`${skillName}失敗: ${res.data?.error ?? 'エラー'}`);
     return;
   }
   const d = res.data;
   trueNameLearned.add(youkaiId);
-  // コレクションカードを即時更新（スキル選択画面が開いていれば再描画）
   if (_activeSkillId) openCollection(_activeSkillId);
 
   const already = d.already_learned ? '（既習得）\n\n' : '';
   const loreText = d.notes ? `\n\n【伝承】\n${d.notes}` : '';
   const appearText = d.appearance ? `\n\n【出没場所・外見】\n${d.appearance}` : '';
   showSkillResult(
-    '言 霊 術 — 真 名 解 明',
+    `${skillName} — 真 名 解 明`,
     `${already}真名：${d.name || '不明'}（${d.kana || ''}）${loreText}${appearText}\n\n（EXP +${d.exp_gained ?? 0}）`,
   );
 }
@@ -1866,15 +1875,17 @@ openCollection = function(skillId = null) {
     }
 
     // スキルボタン
+    const SUPERNATURAL_ROLES = ['yojutsushi', 'yamabushi', 'jujutsushi'];
+    const isSupernatural = SUPERNATURAL_ROLES.includes(currentRole);
     let skillBtn = '';
     if (skillId === 'shikigami' && actionType === 'seal' && job === 'onmyoji') {
       skillBtn = `<button class="skill-action-btn" style="margin-top:4px;font-size:10px;padding:5px"
         onclick="event.stopPropagation();activateShikigami('${y.id}')">式神化する</button>`;
-    } else if (skillId === 'kotodama' && actionType === 'bond' && job === 'jujutsushi') {
-      skillBtn = `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px"
-        onclick="event.stopPropagation();activateKotodama('${y.id}')">真名を解く</button>`;
+    } else if (skillId === 'reveal' && (actionType === 'seal' || actionType === 'bond')) {
+      const btnColor = isSupernatural ? 'juju-btn' : '';
+      skillBtn = `<button class="skill-action-btn ${btnColor}" style="margin-top:4px;font-size:10px;padding:5px"
+        onclick="event.stopPropagation();activateReveal('${y.id}')">真名を解く</button>`;
     } else if (skillId === 'utsushidori' && actionType === 'bond' && job === 'jujutsushi') {
-      // キーワードが無い場合はボタン非表示（詳細取得が必要なため簡略化）
       skillBtn = `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px"
         onclick="event.stopPropagation();openUtsushidoriPicker('${y.id}')">力を写し取る</button>`;
     }
@@ -1897,7 +1908,8 @@ openCollection = function(skillId = null) {
 
   html += '</div>';
   if (skillId) {
-    const SKILL_NAMES = { shikigami:'式神術', kotodama:'言霊術', utsushidori:'写し取り' };
+    const revealSkillName = currentRole && (SKILL_DEFS[currentRole] ?? []).find((s) => s.id === 'reveal')?.name;
+    const SKILL_NAMES = { shikigami:'式神術', reveal: revealSkillName || '真名解明', utsushidori:'写し取り' };
     html = `<div style="font-family:'Shippori Mincho B1',serif;font-size:13px;letter-spacing:0.15em;color:var(--gold);text-align:center;margin-bottom:12px;">
       ${SKILL_NAMES[skillId] || ''} — 対象を選べ</div>` + html;
   }

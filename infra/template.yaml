@@ -1144,6 +1144,39 @@ Resources:
             Path: /skill/monyou/nearby
             Method: GET
 
+  # Lambda: POST /skill/reveal (全ロール: 真名解明)
+  SkillRevealFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillReveal.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillReveal.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/reveal
+            Method: POST
+
   # Lambda: POST /skill/utsushidori (呪術師: 写し取り)
   SkillUtsushidoriFunction:
     Type: AWS::Serverless::Function

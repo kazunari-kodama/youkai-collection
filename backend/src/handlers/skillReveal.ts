@@ -1,0 +1,92 @@
+import type { APIGatewayProxyHandler } from 'aws-lambda';
+import { JUTSU_COST } from '../types/skill';
+import { deductJutsu } from '../lib/jutsuriyoku';
+import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
+import type { YokaiDBItem } from '../types/youkai';
+
+const EXP_GAIN = 15;
+
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+};
+
+export const handler: APIGatewayProxyHandler = async (event) => {
+  let body: { deviceId?: string; youkaiId?: string; debug?: boolean };
+  try {
+    body = JSON.parse(event.body ?? '');
+  } catch {
+    return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) };
+  }
+
+  const { deviceId, youkaiId } = body;
+  if (!deviceId || !youkaiId) {
+    return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
+  }
+
+  // 術力チェック
+  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_kotodama, !!body.debug);
+  if (!jutsuResult.ok) {
+    return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
+      error: 'Insufficient jutsuriyoku', current: jutsuResult.current, required: JUTSU_COST.skill_kotodama, max: jutsuResult.max,
+    })};
+  }
+
+  // 封印または契約済み確認
+  const captureResult = await ddb.send(new GetCommand({ TableName: CAPTURES_TABLE, Key: { deviceId, youkaiId } }));
+  const capture = captureResult.Item;
+  if (!capture || (capture.actionType !== 'seal' && capture.actionType !== 'bond')) {
+    return { statusCode: 409, headers: HEADERS, body: JSON.stringify({ error: 'Not captured by you' }) };
+  }
+
+  if (capture.true_name_learned) {
+    return {
+      statusCode: 200,
+      headers: HEADERS,
+      body: JSON.stringify({
+        already_learned: true,
+        kana: capture.true_name_kana ?? '',
+        lore: capture.true_name_lore ?? '',
+      }),
+    };
+  }
+
+  // 妖怪データ取得
+  const yokaiResult = await ddb.send(new GetCommand({
+    TableName: YOUKAI_TABLE,
+    Key: { yokai_id: youkaiId },
+    ProjectionExpression: 'kana, notes, appearance, #n',
+    ExpressionAttributeNames: { '#n': 'name' },
+  }));
+  if (!yokaiResult.Item) {
+    return { statusCode: 404, headers: HEADERS, body: JSON.stringify({ error: 'Youkai not found' }) };
+  }
+  const youkai = yokaiResult.Item as Pick<YokaiDBItem, 'kana' | 'notes' | 'appearance' | 'name'>;
+  const kana       = youkai.kana ?? '';
+  const name       = youkai.name ?? '';
+  const notes      = youkai.notes ?? '';
+  const appearance = youkai.appearance ?? '';
+
+  // 真名習得を記録
+  await ddb.send(new UpdateCommand({
+    TableName: CAPTURES_TABLE,
+    Key: { deviceId, youkaiId },
+    UpdateExpression: 'SET true_name_learned = :t, true_name_kana = :k, kotodama_at = :now',
+    ExpressionAttributeValues: { ':t': true, ':k': kana, ':now': new Date().toISOString() },
+  }));
+
+  // EXP加算
+  ddb.send(new UpdateCommand({
+    TableName: PLAYER_PROFILE_TABLE,
+    Key: { deviceId },
+    UpdateExpression: 'ADD exp :gain SET updated_at = :now',
+    ExpressionAttributeValues: { ':gain': EXP_GAIN, ':now': new Date().toISOString() },
+  })).catch((e) => console.error('exp update failed', e));
+
+  return {
+    statusCode: 200,
+    headers: HEADERS,
+    body: JSON.stringify({ name, kana, notes, appearance, exp_gained: EXP_GAIN }),
+  };
+};
