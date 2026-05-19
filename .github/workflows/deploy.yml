@@ -64,9 +64,14 @@ jobs:
             --stack-name ${{ env.SAM_STACK_NAME }} \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
             --output text)
+          DIST_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.SAM_STACK_NAME }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendDistributionId'].OutputValue" \
+            --output text)
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "cf_url=$CF_URL" >> $GITHUB_OUTPUT
+          echo "dist_id=$DIST_ID" >> $GITHUB_OUTPUT
 
       - name: Deploy frontend
         run: |
@@ -79,12 +84,9 @@ jobs:
 
       - name: Invalidate CloudFront cache
         run: |
-          DIST_ID=$(aws cloudfront list-distributions \
-            --query "DistributionList.Items[?Origins.Items[0].DomainName=='${{ steps.stack.outputs.bucket }}.s3.ap-northeast-1.amazonaws.com'].Id" \
-            --output text)
-          if [ -n "$DIST_ID" ]; then
-            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
-          fi
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.stack.outputs.dist_id }}" \
+            --paths "/*"
 
       - name: Done
         run: echo "Deployed to ${{ steps.stack.outputs.cf_url }}"

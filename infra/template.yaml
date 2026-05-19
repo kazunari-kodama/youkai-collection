@@ -1178,6 +1178,12 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-FrontendBucket'
 
+  FrontendDistributionId:
+    Description: CloudFront distribution ID for frontend
+    Value: !Ref FrontendDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendDistributionId'
+
   ImagesDistributionId:
     Description: CloudFront distribution ID for images
     Value: !Ref ImagesDistribution
