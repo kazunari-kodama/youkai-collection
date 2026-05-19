@@ -24,8 +24,9 @@ export function maxJutsu(rank: string): number {
 
 /** 保存値と現在時刻・距離から術力現在値を計算 */
 export function calcCurrentJutsu(profile: Partial<JutsuProfile>): number {
-  const stored   = (profile.jutsuriyoku ?? 0);
   const max      = maxJutsu(profile.rank ?? 'C');
+  // jutsuriyoku が未設定（初回）は満タン扱い
+  const stored   = profile.jutsuriyoku !== undefined ? profile.jutsuriyoku : max;
   const lastAt   = profile.jutsu_updated_at ? new Date(profile.jutsu_updated_at).getTime() : Date.now();
   const distNow  = profile.distance_walked_m ?? 0;
   const distLast = profile.distance_at_last_jutsu_update ?? distNow;
