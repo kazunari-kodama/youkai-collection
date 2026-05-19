@@ -70,24 +70,54 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ success: true, actionType: 'release' }) };
   }
 
-  // ---- 契約（bond） — 術力10必要 ----
+  // ---- 契約（bond） — 術力10必要、多段階あり ----
   if (actionType === 'bond') {
-    if (!existing || existing.actionType !== 'seal') {
-      return { statusCode: 409, headers: HEADERS, body: JSON.stringify({ error: 'Must be sealed first' }) };
+    if (existing?.actionType === 'bond') {
+      return { statusCode: 409, headers: HEADERS, body: JSON.stringify({ error: 'Already bonded' }) };
     }
+    const youryoku  = (youkai.youryoku ?? 1) as number;
+    const rankInfo  = YOURYOKU_RANKS[youryoku] ?? YOURYOKU_RANKS[1];
+    const required  = rankInfo.trials;
+    const prevProg  = (existing?.seal_progress as number | undefined) ?? 0;
+    const newProg   = prevProg + 1;
+    const now       = new Date().toISOString();
+
     const jutsu = await deductJutsu(deviceId, JUTSU_COST.bond);
     if (!jutsu.ok) {
       return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
         error: 'Insufficient jutsuriyoku', current: jutsu.current, required: JUTSU_COST.bond, max: jutsu.max,
       })};
     }
-    await ddb.send(new PutCommand({
-      TableName: CAPTURES_TABLE,
-      Item: { ...existing, actionType: 'bond', capturedAt: new Date().toISOString() },
-    }));
-    await updatePlayerProfile(deviceId, faction, 5);
+
+    if (newProg < required) {
+      await ddb.send(new PutCommand({
+        TableName: CAPTURES_TABLE,
+        Item: {
+          deviceId, youkaiId, actionType: 'in_progress', faction,
+          seal_progress: newProg, seal_required: required,
+          capturedAt: existing?.capturedAt ?? now, lastTriedAt: now,
+          userLat, userLon,
+          ...(body.rallyKey ? { rally_key: body.rallyKey } : {}),
+        },
+      }));
+      return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
+        success: true, sealed: false, progress: newProg, required, youryoku, rank_name: rankInfo.name,
+        jutsuriyoku: jutsu.current, jutsuriyoku_max: jutsu.max,
+      })};
+    }
+
+    const bondItem: Record<string, unknown> = {
+      deviceId, youkaiId, actionType: 'bond', faction,
+      capturedAt: now, userLat, userLon,
+      seal_progress: required, seal_required: required,
+    };
+    if (body.rallyKey) bondItem.rally_key = body.rallyKey;
+    await ddb.send(new PutCommand({ TableName: CAPTURES_TABLE, Item: bondItem }));
+    updatePlayerProfile(deviceId, faction, rankInfo.exp).catch(e => console.error('profile update failed', e));
     return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
-      success: true, actionType: 'bond', jutsuriyoku: jutsu.current, jutsuriyoku_max: jutsu.max,
+      success: true, sealed: true, actionType: 'bond', youryoku,
+      rank_name: rankInfo.name, exp_gained: rankInfo.exp,
+      jutsuriyoku: jutsu.current, jutsuriyoku_max: jutsu.max,
     })};
   }
 
