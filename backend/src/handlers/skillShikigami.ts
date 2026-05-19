@@ -1,7 +1,8 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
+import { deductJutsu } from '../lib/jutsuriyoku';
 import { GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
-import { RANK_SHIKIGAMI_SLOTS } from '../types/skill';
+import { RANK_SHIKIGAMI_SLOTS, JUTSU_COST } from '../types/skill';
 
 const EXP_GAIN = 10;
 
@@ -29,6 +30,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (!profile || profile.job !== 'onmyoji') {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Job mismatch: onmyoji required' }) };
   }
+  // 術力チェック
+  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_shikigami);
+  if (!jutsuResult.ok) {
+    return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
+      error: 'Insufficient jutsuriyoku', current: jutsuResult.current, required: JUTSU_COST.skill_shikigami, max: jutsuResult.max,
+    })};
+  }
+
 
   const rank = (profile.rank as string) ?? 'C';
   const maxSlots = RANK_SHIKIGAMI_SLOTS[rank] ?? 1;

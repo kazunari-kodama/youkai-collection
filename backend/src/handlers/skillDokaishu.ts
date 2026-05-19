@@ -1,4 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
+import { JUTSU_COST } from '../types/skill';
+import { deductJutsu } from '../lib/jutsuriyoku';
 import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
 import { distanceMeters } from '../lib/distance';
@@ -30,6 +32,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (profile.Item?.job !== 'onmyoji') {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Job mismatch: onmyoji required' }) };
   }
+  // 術力チェック
+  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_dokaishu);
+  if (!jutsuResult.ok) {
+    return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
+      error: 'Insufficient jutsuriyoku', current: jutsuResult.current, required: JUTSU_COST.skill_dokaishu, max: jutsuResult.max,
+    })};
+  }
+
 
   // 既に封印/読解済みか確認
   const existing = await ddb.send(new GetCommand({ TableName: CAPTURES_TABLE, Key: { deviceId, youkaiId } }));

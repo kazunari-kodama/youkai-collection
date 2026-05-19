@@ -25,7 +25,8 @@ const AIZU_CASTLE = { lat: 37.4946, lon: 139.9293 };
 const TOKYO_STATION = { lat: 35.6812, lon: 139.7671 };
 
 let youkaiData = [];      // YokaiListItem[]
-let capturedIds = new Map(); // youkaiId → actionType ('seal' | 'bond')
+let capturedIds  = new Map(); // youkaiId → actionType ('seal' | 'bond' | 'in_progress')
+let sealProgress = new Map(); // youkaiId → { progress, required }
 
 // --- Stamp Rally state --------------------------------------
 const rallyState = {
@@ -166,7 +167,12 @@ async function loadData() {
       apiGet(`/collection?deviceId=${encodeURIComponent(DEVICE_ID)}`),
     ]);
     youkaiData = youkai;
-    capturedIds = new Map(collection.map((c) => [c.youkaiId, c.actionType ?? 'seal']));
+    capturedIds  = new Map(collection.map((c) => [c.youkaiId, c.actionType ?? 'seal']));
+    sealProgress = new Map(
+      collection
+        .filter((c) => c.actionType === 'in_progress' && c.seal_progress != null)
+        .map((c) => [c.youkaiId, { progress: c.seal_progress, required: c.seal_required }])
+    );
     return true;
   } catch (e) {
     setStatus('データ読込失敗: ' + e.message);
@@ -247,12 +253,26 @@ function capturedMarkerHtml(youkai, actionType) {
 
 function addYoukaiMarker(youkai) {
   const actionType = capturedIds.get(youkai.id);
-  const isCaptured = actionType !== undefined;
+  const isCaptured = actionType === 'seal' || actionType === 'bond';
+  const isInProgress = actionType === 'in_progress';
+  const prog = sealProgress.get(youkai.id);
+
+  let markerHtml;
+  if (isCaptured) {
+    markerHtml = capturedMarkerHtml(youkai, actionType);
+  } else if (isInProgress && prog) {
+    const pct = Math.round((prog.progress / prog.required) * 100);
+    markerHtml = `<div class="hitodama-marker" data-id="${youkai.id}" style="position:relative">` +
+      `<img src="assets/images/hitodama.png" alt="">` +
+      `<div class="marker-progress-wrap"><div class="marker-progress-fill" style="width:${pct}%"></div></div>` +
+      `</div>`;
+  } else {
+    markerHtml = `<div class="hitodama-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.png" alt=""></div>`;
+  }
+
   const icon = L.divIcon({
     className: 'youkai-icon-wrapper',
-    html: isCaptured
-      ? capturedMarkerHtml(youkai, actionType)
-      : `<div class="hitodama-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.png" alt=""></div>`,
+    html: markerHtml,
     iconSize: isCaptured ? [44, 44] : [36, 36],
     iconAnchor: isCaptured ? [22, 22] : [18, 18],
   });
@@ -295,6 +315,7 @@ async function handleMarkerTap(youkai) {
 
 // --- Player position ----------------------------------------
 function updatePlayerPosition(lat, lon) {
+  _onWalkPosition(lat, lon);
   state.playerPos = { lat, lon };
   if (!state.initialCentered) {
     state.initialCentered = true;
@@ -408,7 +429,8 @@ function isAnyModalOpen() {
 const _unsealing = new Set();
 
 async function triggerUnseal(youkaiId) {
-  if (capturedIds.has(youkaiId) || rallyState.capturedIds.has(youkaiId) || _unsealing.has(youkaiId)) return;
+  const at = capturedIds.get(youkaiId);
+  if ((at === 'seal' || at === 'bond') || rallyState.capturedIds.has(youkaiId) || _unsealing.has(youkaiId)) return;
   _unsealing.add(youkaiId);
 
   let detail;
@@ -482,19 +504,41 @@ async function confirmCapture() {
     btn.textContent = isSupernatural ? '共 存 の 契 り を 結 ぶ' : '図 鑑 に 封 じ る';
     if (result.status === 403) {
       showToast('位置が離れすぎています');
+    } else if (result.status === 402) {
+      const cur = result.data?.current ?? 0;
+      const req = result.data?.required ?? 0;
+      showToast(`術力不足（${cur}/${req}）— 歩くか時間を置いて回復`);
+      _jutsu.current = cur;
+      _renderJutsuHUD();
     } else {
       showToast('封印失敗: ' + (result.data?.error ?? 'エラー'));
     }
     return;
   }
 
-  const isRally = !!detail.rally_key;
+  const isRally   = !!detail.rally_key;
+  const resData   = result.data ?? {};
+  const isSealed  = resData.sealed === true;
+  const inProgress = resData.sealed === false;
+
+  if (inProgress) {
+    // 封印途中 — 進捗を更新してマーカーゲージを再描画
+    sealProgress.set(detail.id, { progress: resData.progress, required: resData.required });
+    capturedIds.set(detail.id, 'in_progress');
+    refreshMarker(detail.id);
+    closeUnseal();
+    state.pendingUnseal = null;
+    showToast(`封印進行中 ${resData.progress}/${resData.required}（${resData.rank_name ?? ''}）`, 2500);
+    return;
+  }
+
   if (isRally) {
     rallyState.capturedIds.add(detail.id);
     refreshRallyMarker(detail.id);
     updateRallyStats();
   } else {
     capturedIds.set(detail.id, isSupernatural ? 'bond' : 'seal');
+    sealProgress.delete(detail.id);
     refreshMarker(detail.id);
     updateStats();
   }
@@ -506,9 +550,10 @@ async function confirmCapture() {
     showToast('スタンプコンプリート！受付に図鑑を提示してください');
     setTimeout(() => openRallyCollection(), 1200);
   } else {
+    const rankLabel = resData.rank_name ? `【${resData.rank_name}】` : '';
     showToast(isSupernatural
-      ? `「${detail.name}」と共存の契りを結んだ`
-      : `「${detail.name}」を図鑑に封じた`);
+      ? `${rankLabel}「${detail.name}」と共存の契りを結んだ`
+      : `${rankLabel}「${detail.name}」を図鑑に封じた`);
   }
 }
 
@@ -1484,6 +1529,51 @@ document.querySelectorAll('.modal-overlay').forEach((m) => {
 
 const DOKAISHU_RANGE_M = 50;
 
+// ---- 術力 HUD ------------------------------------------------
+let _jutsu = { current: 100, max: 100 };
+
+async function refreshJutsuHUD() {
+  try {
+    const p = await apiGet(`/player/profile?deviceId=${encodeURIComponent(DEVICE_ID)}`);
+    _jutsu.current = p.jutsuriyoku ?? 100;
+    _jutsu.max     = p.jutsuriyoku_max ?? 100;
+  } catch { /* サイレント失敗 */ }
+  _renderJutsuHUD();
+}
+
+function _renderJutsuHUD() {
+  const hud  = document.getElementById('jutsu-hud');
+  if (!currentRole) { hud.style.display = 'none'; return; }
+  hud.style.display = '';
+  const pct  = Math.min(100, Math.round(_jutsu.current / _jutsu.max * 100));
+  document.getElementById('jutsu-bar-fill').style.width = pct + '%';
+  document.getElementById('jutsu-val').textContent = `${_jutsu.current}/${_jutsu.max}`;
+}
+
+// ---- 歩行距離トラッキング ------------------------------------
+let _lastWalkPos   = null;
+let _walkBuffer    = 0;  // 未送信の累積距離(m)
+
+function _onWalkPosition(lat, lon) {
+  if (_lastWalkPos) {
+    const d = distanceMeters(_lastWalkPos.lat, _lastWalkPos.lon, lat, lon);
+    if (d > 1 && d < 200) {  // ノイズ除去: 1m未満・200m超は無視
+      _walkBuffer += d;
+      // 50m貯まるごとに送信
+      if (_walkBuffer >= 50) {
+        const meters = Math.floor(_walkBuffer);
+        _walkBuffer -= meters;
+        apiPost('/player/walk', { deviceId: DEVICE_ID, meters }).then(() => {
+          // 術力が回復したかもしれないのでHUDを更新
+          _jutsu.current = Math.min(_jutsu.max, _jutsu.current + Math.floor(meters / 50));
+          _renderJutsuHUD();
+        }).catch(() => {});
+      }
+    }
+  }
+  _lastWalkPos = { lat, lon };
+}
+
 const SKILL_DEFS = {
   onmyoji: [
     { id: 'dokaishu',  name: '読解術',   desc: '未封印の妖の正体・属性を読み解く。封印圏（13m）より広い50m圏内で発動。', locationBased: true },
@@ -1512,6 +1602,7 @@ function _initSkillUI() {
   document.getElementById('btn-skills').style.display = currentRole ? '' : 'none';
   document.getElementById('btn-monyou').style.display = (job === 'jujutsushi') ? '' : 'none';
   if (job === 'onmyoji') _checkAndRenderKekkai();
+  refreshJutsuHUD();
 }
 
 // ---- スキルパネル ------------------------------------------

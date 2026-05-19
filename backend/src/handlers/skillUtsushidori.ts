@@ -1,8 +1,9 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
+import { deductJutsu } from '../lib/jutsuriyoku';
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
 import type { YokaiDBItem } from '../types/youkai';
-import { MAX_COPIED_POWERS } from '../types/skill';
+import { MAX_COPIED_POWERS, JUTSU_COST } from '../types/skill';
 
 const EXP_GAIN = 12;
 
@@ -30,6 +31,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (!profile || profile.job !== 'jujutsushi') {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Job mismatch: jujutsushi required' }) };
   }
+  // 術力チェック
+  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_utsushidori);
+  if (!jutsuResult.ok) {
+    return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
+      error: 'Insufficient jutsuriyoku', current: jutsuResult.current, required: JUTSU_COST.skill_utsushidori, max: jutsuResult.max,
+    })};
+  }
+
 
   // bond済み確認
   const captureResult = await ddb.send(new GetCommand({ TableName: CAPTURES_TABLE, Key: { deviceId, youkaiId } }));

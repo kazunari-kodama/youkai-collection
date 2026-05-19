@@ -22,6 +22,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       TableName: CAPTURES_TABLE,
       KeyConditionExpression: 'deviceId = :d',
       ExpressionAttributeValues: { ':d': deviceId },
+      ProjectionExpression: 'youkaiId, actionType, capturedAt, faction, seal_progress, seal_required',
     }),
   );
 

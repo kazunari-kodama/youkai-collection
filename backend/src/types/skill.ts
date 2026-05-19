@@ -31,6 +31,42 @@ export const MONYOU_DAILY_LIMIT = 1;
 export const MONYOU_MAX_ACTIVE  = 5;
 export const MONYOU_TTL_HOURS   = 24;
 
+// ---- 妖力ランク定義 ----
+export const YOURYOKU_RANKS: Record<number, { name: string; trials: number; exp: number }> = {
+  1: { name: '迷霊', trials: 1, exp: 10 },
+  2: { name: '物怪', trials: 2, exp: 20 },
+  3: { name: '精霊', trials: 3, exp: 35 },
+  4: { name: '御魂', trials: 5, exp: 55 },
+  5: { name: '権現', trials: 8, exp: 80 },
+};
+
+export const YOURYOKU_DISTRIBUTION = [
+  { rank: 1, weight: 40 },
+  { rank: 2, weight: 30 },
+  { rank: 3, weight: 20 },
+  { rank: 4, weight:  8 },
+  { rank: 5, weight:  2 },
+];
+
+// ---- 術力定数 ----
+export const JUTSU_BASE_MAX         = 100;
+export const JUTSU_PER_RANK         = 20;   // ランクCより上、1段ごとに+20
+export const JUTSU_RECOVERY_PER_MIN = 1;    // 1点/分
+export const JUTSU_RECOVERY_PER_50M = 1;    // 1点/50m
+
+export const JUTSU_COST = {
+  bond:             10,
+  skill_dokaishu:   10,
+  skill_shikigami:  20,
+  skill_kotodama:   15,
+  skill_monyou:     25,
+  skill_utsushidori:20,
+} as const;
+
+export const RANK_JUTSU_MAX: Record<string, number> = {
+  C: 100, B: 120, A: 140, S: 160, SS: 200,
+};
+
 /** PatternsTable の1レコード */
 export interface PatternDBItem {
   pattern_id: string;

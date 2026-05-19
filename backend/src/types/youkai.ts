@@ -17,6 +17,7 @@ export interface YokaiDBItem {
   rally_key?: string;
   night_only?: boolean;
   require_qr?: boolean;
+  youryoku?: number;   // 1-5（省略時は1扱い）
 }
 
 /** GET /youkai レスポンスの1件 */
@@ -57,7 +58,9 @@ export interface CaptureDBItem {
   capturedAt: string;
   userLat: number;
   userLon: number;
-  actionType: 'seal' | 'release' | 'bond';
+  actionType: 'seal' | 'release' | 'bond' | 'in_progress';
   faction: 'exorcist' | 'supernatural';
   rally_key?: string;
+  seal_progress?: number;   // 封印試行回数（in_progressのとき使用）
+  seal_required?: number;   // 封印に必要な試行回数
 }

@@ -414,6 +414,34 @@ Resources:
             Path: /player/profile
             Method: GET
 
+  # Lambda: POST /player/walk
+  PlayerWalkFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/playerWalk.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/playerWalk.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /player/walk
+            Method: POST
+
   # Lambda: GET /collection
   GetCollectionFunction:
     Type: AWS::Serverless::Function

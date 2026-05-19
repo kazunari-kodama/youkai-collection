@@ -194,6 +194,7 @@ function openForm(id) {
     document.getElementById('f-category-tags').value = (y.category_tags ?? []).join(', ');
     document.getElementById('f-night-only').checked = y.night_only === true;
     document.getElementById('f-require-qr').checked = y.require_qr === true;
+    document.getElementById('f-youryoku').value = String(y.youryoku ?? 1);
     document.getElementById('f-is-original').checked = y.is_original === true;
 
     // Derive existing camera key from _icon_url (which is the camera URL)
@@ -317,6 +318,7 @@ async function saveYoukai() {
     category_tags: toArray(document.getElementById('f-category-tags').value),
     night_only: document.getElementById('f-night-only').checked || undefined,
     require_qr: document.getElementById('f-require-qr').checked || undefined,
+    youryoku: Number(document.getElementById('f-youryoku').value) || 1,
     is_original: document.getElementById('f-is-original').checked || undefined,
     ...(images !== undefined ? { images, image_types } : {}),
   };

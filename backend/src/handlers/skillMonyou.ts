@@ -1,9 +1,10 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
+import { deductJutsu } from '../lib/jutsuriyoku';
 import { GetCommand, PutCommand, QueryCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, PATTERNS_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
 import { distanceMeters } from '../lib/distance';
 import type { PatternDBItem } from '../types/skill';
-import { MONYOU_DAILY_LIMIT, MONYOU_MAX_ACTIVE, MONYOU_TTL_HOURS } from '../types/skill';
+import { MONYOU_DAILY_LIMIT, MONYOU_MAX_ACTIVE, MONYOU_TTL_HOURS, JUTSU_COST } from '../types/skill';
 
 const EXP_GAIN = 8;
 
@@ -39,6 +40,14 @@ async function handleCreate(event: Parameters<APIGatewayProxyHandler>[0]) {
   if (profileResult.Item?.job !== 'jujutsushi') {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Job mismatch: jujutsushi required' }) };
   }
+  // 術力チェック
+  const jutsuResult = await deductJutsu(deviceId, JUTSU_COST.skill_monyou);
+  if (!jutsuResult.ok) {
+    return { statusCode: 402, headers: HEADERS, body: JSON.stringify({
+      error: 'Insufficient jutsuriyoku', current: jutsuResult.current, required: JUTSU_COST.skill_monyou, max: jutsuResult.max,
+    })};
+  }
+
 
   const now = new Date();
   const todayStart = new Date(now);
