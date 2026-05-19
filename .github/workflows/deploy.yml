@@ -20,7 +20,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::653334182577:role/github-actions-youkai-deploy
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: actions/setup-node@v4
