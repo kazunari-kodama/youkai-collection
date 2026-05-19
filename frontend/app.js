@@ -1509,15 +1509,15 @@ function _currentJob() {
 
 function _initSkillUI() {
   const job = _currentJob();
-  document.getElementById('btn-skills').style.display = job ? '' : 'none';
+  document.getElementById('btn-skills').style.display = currentRole ? '' : 'none';
   document.getElementById('btn-monyou').style.display = (job === 'jujutsushi') ? '' : 'none';
   if (job === 'onmyoji') _checkAndRenderKekkai();
 }
 
 // ---- スキルパネル ------------------------------------------
 function openSkillPanel() {
+  if (!currentRole) return;
   const job = _currentJob();
-  if (!job) return;
   const info = ROLE_INFO[currentRole];
   document.getElementById('sp-emblem').textContent = info.emblem;
   document.getElementById('sp-emblem').style.borderColor = info.color;
@@ -1525,8 +1525,14 @@ function openSkillPanel() {
   document.getElementById('sp-role-name').textContent = info.kanji;
   document.getElementById('sp-rank').textContent = `EXP積算中`;
 
-  const defs = SKILL_DEFS[job] ?? [];
+  const defs = job ? (SKILL_DEFS[job] ?? []) : [];
   let html = '';
+  if (!job) {
+    html = `<div style="text-align:center;padding:24px 8px;color:#888;font-size:13px;line-height:1.8;">
+      ${info.kanji}のスキルは<br>近日実装予定です。<br><br>
+      <span style="font-size:11px;color:#666;">陰陽師・呪術師のスキルが先行実装中</span>
+    </div>`;
+  }
   defs.forEach((sk) => {
     const isBtnColor = (job === 'jujutsushi') ? 'juju-btn' : '';
     const locationNote = sk.locationBased
