@@ -27,6 +27,7 @@ const TOKYO_STATION = { lat: 35.6812, lon: 139.7671 };
 let youkaiData = [];      // YokaiListItem[]
 let capturedIds  = new Map(); // youkaiId → actionType ('seal' | 'bond' | 'in_progress')
 let sealProgress = new Map(); // youkaiId → { progress, required }
+let trueNameLearned = new Set(); // youkaiId — bond 済みで言霊術使用済み
 
 // --- Stamp Rally state --------------------------------------
 const rallyState = {
@@ -173,6 +174,9 @@ async function loadData() {
       collection
         .filter((c) => c.actionType === 'in_progress' && c.seal_progress != null)
         .map((c) => [c.youkaiId, { progress: c.seal_progress, required: c.seal_required }])
+    );
+    trueNameLearned = new Set(
+      collection.filter((c) => c.true_name_learned).map((c) => c.youkaiId)
     );
     return true;
   } catch (e) {
@@ -1654,7 +1658,10 @@ function closeSkillPanel() {
   document.getElementById('skill-panel-modal').classList.remove('show');
 }
 
+let _activeSkillId = null;
+
 function openCollectionForSkill(skillId) {
+  _activeSkillId = skillId;
   closeSkillPanel();
   openCollection(skillId);
 }
@@ -1769,10 +1776,16 @@ async function activateKotodama(youkaiId) {
     return;
   }
   const d = res.data;
+  trueNameLearned.add(youkaiId);
+  // コレクションカードを即時更新（スキル選択画面が開いていれば再描画）
+  if (_activeSkillId) openCollection(_activeSkillId);
+
   const already = d.already_learned ? '（既習得）\n\n' : '';
+  const loreText = d.notes ? `\n\n【伝承】\n${d.notes}` : '';
+  const appearText = d.appearance ? `\n\n【出没場所・外見】\n${d.appearance}` : '';
   showSkillResult(
     '言 霊 術 — 真 名 解 明',
-    `${already}真名：${d.kana || '不明'}\n\n伝承の断片：\n${d.lore || '（記録なし）'}…\n\n（EXP +${d.exp_gained ?? 0}）`,
+    `${already}真名：${d.name || '不明'}（${d.kana || ''}）${loreText}${appearText}\n\n（EXP +${d.exp_gained ?? 0}）`,
   );
 }
 
@@ -1866,11 +1879,18 @@ openCollection = function(skillId = null) {
         onclick="event.stopPropagation();openUtsushidoriPicker('${y.id}')">力を写し取る</button>`;
     }
 
+    // bond 未解明は名前を隠す
+    const nameRevealed = actionType !== 'bond' || trueNameLearned.has(y.id);
+    const displayName  = nameRevealed ? y.name : '？？？';
+    const statusBadge  = actionType === 'bond'
+      ? `<div class="ck-status-badge bond">${trueNameLearned.has(y.id) ? '真名解明' : '契約済'}</div>`
+      : actionType === 'seal' ? '<div class="ck-status-badge seal">封印済</div>' : '';
+
     html += `
       <div class="collection-card" ${!skillId ? `onclick="closeCollectionAndDetail('${y.id}')"` : ''}>
-        <div class="ck-img"><img src="${y.camera_url}" alt="${y.name}" onerror="this.style.display='none'"></div>
-        <div class="ck-name">${y.name}</div>
-        ${actionType === 'bond' ? '<div class="ck-status-badge bond">契約済</div>' : actionType === 'seal' ? '<div class="ck-status-badge seal">封印済</div>' : ''}
+        <div class="ck-img"><img src="${y.camera_url}" alt="${displayName}" onerror="this.style.display='none'"></div>
+        <div class="ck-name">${displayName}</div>
+        ${statusBadge}
         ${skillBtn}
       </div>`;
   });

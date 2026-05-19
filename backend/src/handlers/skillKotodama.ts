@@ -6,7 +6,6 @@ import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/
 import type { YokaiDBItem } from '../types/youkai';
 
 const EXP_GAIN = 15;
-const LORE_PREVIEW_LEN = 80;
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -63,21 +62,24 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const yokaiResult = await ddb.send(new GetCommand({
     TableName: YOUKAI_TABLE,
     Key: { yokai_id: youkaiId },
-    ProjectionExpression: 'kana, notes',
+    ProjectionExpression: 'kana, notes, appearance, #n',
+    ExpressionAttributeNames: { '#n': 'name' },
   }));
   if (!yokaiResult.Item) {
     return { statusCode: 404, headers: HEADERS, body: JSON.stringify({ error: 'Youkai not found' }) };
   }
-  const youkai = yokaiResult.Item as Pick<YokaiDBItem, 'kana' | 'notes'>;
-  const kana = youkai.kana ?? '';
-  const lore = (youkai.notes ?? '').slice(0, LORE_PREVIEW_LEN);
+  const youkai = yokaiResult.Item as Pick<YokaiDBItem, 'kana' | 'notes' | 'appearance' | 'name'>;
+  const kana       = youkai.kana ?? '';
+  const name       = youkai.name ?? '';
+  const notes      = youkai.notes ?? '';
+  const appearance = youkai.appearance ?? '';
 
   // 真名習得を記録
   await ddb.send(new UpdateCommand({
     TableName: CAPTURES_TABLE,
     Key: { deviceId, youkaiId },
-    UpdateExpression: 'SET true_name_learned = :t, true_name_kana = :k, true_name_lore = :l, kotodama_at = :now',
-    ExpressionAttributeValues: { ':t': true, ':k': kana, ':l': lore, ':now': new Date().toISOString() },
+    UpdateExpression: 'SET true_name_learned = :t, true_name_kana = :k, kotodama_at = :now',
+    ExpressionAttributeValues: { ':t': true, ':k': kana, ':now': new Date().toISOString() },
   }));
 
   // EXP加算
@@ -91,6 +93,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   return {
     statusCode: 200,
     headers: HEADERS,
-    body: JSON.stringify({ kana, lore, exp_gained: EXP_GAIN }),
+    body: JSON.stringify({ name, kana, notes, appearance, exp_gained: EXP_GAIN }),
   };
 };
