@@ -1,0 +1,43 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'frontend/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ap-northeast-1
+      API_URL: https://5rmuhg7c8d.execute-api.ap-northeast-1.amazonaws.com/prod
+      S3_BUCKET: youkai-collection-web-frontendbucket-yhmecizkwxvh
+      CF_DIST_ID: E159YKWJ7IRA61
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::653334182577:role/github-actions-youkai-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy frontend
+        run: |
+          sed "s|__API_BASE_URL__|${{ env.API_URL }}|g" \
+            frontend/config.js > /tmp/config.js
+          aws s3 sync frontend/ s3://${{ env.S3_BUCKET }}/ \
+            --exclude "config.js" \
+            --delete
+          aws s3 cp /tmp/config.js s3://${{ env.S3_BUCKET }}/config.js
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ env.CF_DIST_ID }}" \
+            --paths "/*"
