@@ -53,33 +53,35 @@ async function handleCreate(event: Parameters<APIGatewayProxyHandler>[0]) {
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
 
-  // 1日制限チェック（deviceId GSIで今日作成分を数える）
-  const todayPatterns = await ddb.send(new QueryCommand({
-    TableName: PATTERNS_TABLE,
-    IndexName: 'deviceId-expires_at-index',
-    KeyConditionExpression: 'deviceId = :d AND expires_at > :start',
-    FilterExpression: 'created_at >= :today',
-    ExpressionAttributeValues: {
-      ':d': deviceId,
-      ':start': now.toISOString(),
-      ':today': todayStart.toISOString(),
-    },
-    Select: 'COUNT',
-  }));
-  if ((todayPatterns.Count ?? 0) >= MONYOU_DAILY_LIMIT) {
-    return { statusCode: 429, headers: HEADERS, body: JSON.stringify({ error: 'Daily limit reached', limit: MONYOU_DAILY_LIMIT }) };
-  }
+  if (!body.debug) {
+    // 1日制限チェック（deviceId GSIで今日作成分を数える）
+    const todayPatterns = await ddb.send(new QueryCommand({
+      TableName: PATTERNS_TABLE,
+      IndexName: 'deviceId-expires_at-index',
+      KeyConditionExpression: 'deviceId = :d AND expires_at > :start',
+      FilterExpression: 'created_at >= :today',
+      ExpressionAttributeValues: {
+        ':d': deviceId,
+        ':start': now.toISOString(),
+        ':today': todayStart.toISOString(),
+      },
+      Select: 'COUNT',
+    }));
+    if ((todayPatterns.Count ?? 0) >= MONYOU_DAILY_LIMIT) {
+      return { statusCode: 429, headers: HEADERS, body: JSON.stringify({ error: 'Daily limit reached', limit: MONYOU_DAILY_LIMIT }) };
+    }
 
-  // 有効紋様数チェック
-  const activePatterns = await ddb.send(new QueryCommand({
-    TableName: PATTERNS_TABLE,
-    IndexName: 'deviceId-expires_at-index',
-    KeyConditionExpression: 'deviceId = :d AND expires_at > :now',
-    ExpressionAttributeValues: { ':d': deviceId, ':now': now.toISOString() },
-    Select: 'COUNT',
-  }));
-  if ((activePatterns.Count ?? 0) >= MONYOU_MAX_ACTIVE) {
-    return { statusCode: 429, headers: HEADERS, body: JSON.stringify({ error: 'Max active patterns reached', max: MONYOU_MAX_ACTIVE }) };
+    // 有効紋様数チェック
+    const activePatterns = await ddb.send(new QueryCommand({
+      TableName: PATTERNS_TABLE,
+      IndexName: 'deviceId-expires_at-index',
+      KeyConditionExpression: 'deviceId = :d AND expires_at > :now',
+      ExpressionAttributeValues: { ':d': deviceId, ':now': now.toISOString() },
+      Select: 'COUNT',
+    }));
+    if ((activePatterns.Count ?? 0) >= MONYOU_MAX_ACTIVE) {
+      return { statusCode: 429, headers: HEADERS, body: JSON.stringify({ error: 'Max active patterns reached', max: MONYOU_MAX_ACTIVE }) };
+    }
   }
 
   const patternId = crypto.randomUUID();
