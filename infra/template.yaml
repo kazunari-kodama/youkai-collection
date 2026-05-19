@@ -313,7 +313,9 @@ Resources:
               Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
             - Effect: Allow
               Action:
+                - dynamodb:GetItem
                 - dynamodb:PutItem
+                - dynamodb:UpdateItem
               Resource: !GetAtt CapturesTable.Arn
             - Effect: Allow
               Action:
