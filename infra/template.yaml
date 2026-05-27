@@ -1407,6 +1407,35 @@ Resources:
             Path: /skill/kekkai/stone
             Method: POST
 
+  # Lambda: DELETE /debug/kekkai (デバッグ用: 石・結界全削除)
+  DebugClearKekkaiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/debugClearKekkai.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/debugClearKekkai.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:BatchWriteItem]
+              Resource:
+                - !GetAtt KekkaiStonesTable.Arn
+                - !GetAtt KekkaiBarriersTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /debug/kekkai
+            Method: DELETE
+
   # Lambda: GET /skill/kekkai/barriers (全員: 有効な結界一覧)
   SkillKekkaiBarriersPublicFunction:
     Type: AWS::Serverless::Function

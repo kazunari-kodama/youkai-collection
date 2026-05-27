@@ -21,6 +21,7 @@ const IS_QR_TEST = new URLSearchParams(location.search).get('qr') === '1';
 // デバッグ専用ボタンは dev 環境のみ表示
 document.getElementById('btn-debug').style.display = IS_DEV ? '' : 'none';
 document.getElementById('btn-clear-collection').style.display = IS_DEV ? '' : 'none';
+document.getElementById('btn-clear-kekkai').style.display = IS_DEV ? '' : 'none';
 const AIZU_CASTLE = { lat: 37.4946, lon: 139.9293 };
 const TOKYO_STATION = { lat: 35.6812, lon: 139.7671 };
 
@@ -1008,6 +1009,26 @@ async function clearCollection() {
     showToast(`図鑑クリア完了 (${deleted}件削除)`);
   } catch (e) {
     showToast('クリアに失敗しました: ' + e.message, true);
+  }
+}
+
+async function clearKekkai() {
+  if (!confirm('結界石・結界データをすべてクリアしますか？\n（この操作はサーバーのデータも削除します）')) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/debug/kekkai?deviceId=${encodeURIComponent(DEVICE_ID)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const d = await res.json();
+    _kekkaiStoneLayers.forEach((l) => map.removeLayer(l));
+    _kekkaiStoneLayers = [];
+    _kekkaiMyStones = [];
+    _kekkaiBarrierLayers.forEach((l) => map.removeLayer(l));
+    _kekkaiBarrierLayers = [];
+    document.querySelector('.kekkai-hint')?.remove();
+    showToast(`結界クリア完了（石${d.stones_deleted}個・結界${d.barriers_deleted}陣）`);
+  } catch (e) {
+    showToast('クリアに失敗しました: ' + e.message);
   }
 }
 
