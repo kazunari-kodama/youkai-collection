@@ -539,7 +539,8 @@ async function confirmCapture() {
     refreshMarker(detail.id);
     closeUnseal();
     state.pendingUnseal = null;
-    showToast(`封印進行中 ${resData.progress}/${resData.required}（${resData.rank_name ?? ''}）`, 2500);
+    const bonusNote = resData.kekkai_bonus ? '【結界ボーナス】 ' : '';
+    showToast(`${bonusNote}封印進行中 ${resData.progress}/${resData.required}（${resData.rank_name ?? ''}）`, 2500);
     return;
   }
 
@@ -2118,12 +2119,13 @@ function _startHishoTimer() {
         if (res.ok) {
           const d = res.data;
           let msg;
+          const bonus = d.kekkai_bonus ? '【結界ボーナス】 ' : '';
           if (!d.trial_success) {
-            msg = `式神、跳ね返された…（${d.progress ?? 0}/${d.required} EXP +${d.exp_gained}）`;
+            msg = `${bonus}式神、跳ね返された…（${d.progress ?? 0}/${d.required} EXP +${d.exp_gained}）`;
           } else if (d.sealed) {
-            msg = `式神が封印を完了！（EXP +${d.exp_gained}）`;
+            msg = `${bonus}式神が封印を完了！（EXP +${d.exp_gained}）`;
           } else {
-            msg = `式神が一撃加えた（${d.progress}/${d.required} EXP +${d.exp_gained}）`;
+            msg = `${bonus}式神が一撃加えた（${d.progress}/${d.required} EXP +${d.exp_gained}）`;
           }
           showToast(msg);
           if (d.sealed) refreshYoukaiMarker(item.target_youkai_id, 'seal');

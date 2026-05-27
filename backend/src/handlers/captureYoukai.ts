@@ -1,6 +1,7 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
+import { GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, KEKKAI_BARRIERS_TABLE } from '../lib/dynamodb';
+import { isInsideAnyBarrier } from '../lib/geometry';
 import { distanceMeters } from '../lib/distance';
 import { deductJutsu } from '../lib/jutsuriyoku';
 import type { YokaiDBItem } from '../types/youkai';
@@ -128,10 +129,23 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   const youryoku  = (youkai.youryoku ?? 1) as number;
   const rankInfo  = YOURYOKU_RANKS[youryoku] ?? YOURYOKU_RANKS[1];
-  const required  = rankInfo.trials;
   const prevProg  = (existing?.seal_progress as number | undefined) ?? 0;
-  const newProg   = prevProg + 1;
   const now       = new Date().toISOString();
+
+  // 結界ボーナス: 自分の有効な結界内に妖怪がいれば試行回数-1
+  const barriersRes = await ddb.send(new QueryCommand({
+    TableName: KEKKAI_BARRIERS_TABLE,
+    KeyConditionExpression: 'deviceId = :d',
+    ExpressionAttributeValues: { ':d': deviceId },
+    ProjectionExpression: 'lats, lons, expires_at',
+  }));
+  const kekkaiBonus = isInsideAnyBarrier(
+    youkai.latitude, youkai.longitude,
+    (barriersRes.Items ?? []) as Array<{ lats: number[]; lons: number[]; expires_at: string }>,
+  );
+  const required = Math.max(1, rankInfo.trials - (kekkaiBonus ? 1 : 0));
+
+  const newProg = prevProg + 1;
 
   if (newProg < required) {
     await ddb.send(new PutCommand({
@@ -145,7 +159,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       },
     }));
     return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
-      success: true, sealed: false, progress: newProg, required, youryoku, rank_name: rankInfo.name,
+      success: true, sealed: false, progress: newProg, required, youryoku,
+      rank_name: rankInfo.name, kekkai_bonus: kekkaiBonus,
     })};
   }
 
@@ -162,7 +177,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
     success: true, sealed: true, progress: required, required, youryoku,
-    rank_name: rankInfo.name, exp_gained: rankInfo.exp,
+    rank_name: rankInfo.name, exp_gained: rankInfo.exp, kekkai_bonus: kekkaiBonus,
   })};
 };
 

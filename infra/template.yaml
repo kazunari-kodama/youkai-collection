@@ -388,6 +388,10 @@ Resources:
                 - dynamodb:GetItem
                 - dynamodb:UpdateItem
               Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !GetAtt KekkaiBarriersTable.Arn
       Events:
         Api:
           Type: Api
@@ -1366,6 +1370,9 @@ Resources:
             - Effect: Allow
               Action: [dynamodb:UpdateItem]
               Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !GetAtt KekkaiBarriersTable.Arn
       Events:
         Api:
           Type: Api

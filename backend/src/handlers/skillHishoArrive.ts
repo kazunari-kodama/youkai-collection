@@ -1,11 +1,12 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { GetCommand, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, FLYING_SHIKIGAMI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, YOUKAI_TABLE } from '../lib/dynamodb';
+import { GetCommand, UpdateCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, FLYING_SHIKIGAMI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, YOUKAI_TABLE, KEKKAI_BARRIERS_TABLE } from '../lib/dynamodb';
 import {
   HISHO_SUCCESS_RATE_KNOWN,
   HISHO_SUCCESS_RATE_UNKNOWN,
   YOURYOKU_RANKS,
 } from '../types/skill';
+import { isInsideAnyBarrier } from '../lib/geometry';
 import type { YokaiDBItem } from '../types/youkai';
 
 const HEADERS = {
@@ -64,7 +65,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }));
   const youryoku  = ((youkaiRes.Item as Pick<YokaiDBItem, 'youryoku'> | undefined)?.youryoku ?? 1) as number;
   const rankInfo  = YOURYOKU_RANKS[youryoku] ?? YOURYOKU_RANKS[1];
-  const required  = rankInfo.trials;
+
+  // 結界ボーナス: 自分の有効な結界内に目標妖怪がいれば試行回数-1
+  const barriersRes = await ddb.send(new QueryCommand({
+    TableName: KEKKAI_BARRIERS_TABLE,
+    KeyConditionExpression: 'deviceId = :d',
+    ExpressionAttributeValues: { ':d': deviceId },
+    ProjectionExpression: 'lats, lons, expires_at',
+  }));
+  const kekkaiBonus = isInsideAnyBarrier(
+    record.target_lat as number,
+    record.target_lon as number,
+    (barriersRes.Items ?? []) as Array<{ lats: number[]; lons: number[]; expires_at: string }>,
+  );
+  const required = Math.max(1, rankInfo.trials - (kekkaiBonus ? 1 : 0));
 
   // 現在の封印進捗取得
   const captureRes = await ddb.send(new GetCommand({
@@ -182,6 +196,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       youryoku,
       rank_name: rankInfo.name,
       exp_gained: expGain,
+      kekkai_bonus: kekkaiBonus,
     }),
   };
 };
