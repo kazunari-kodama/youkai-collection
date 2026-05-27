@@ -1586,7 +1586,6 @@ function _onWalkPosition(lat, lon) {
 
 const SKILL_DEFS = {
   onmyoji: [
-    { id: 'dokaishu',  name: '読解術', desc: '未封印の妖の正体・属性を読み解く。封印圏（13m）より広い50m圏内で発動。', locationBased: true },
     { id: 'shikigami', name: '式神術', desc: '術力を消費して式神を遠方へ飛ばし、妖怪を遠隔封印する。速度 1km=10分。地図上の妖怪マーカーをタップして発射。', locationBased: true },
     { id: 'kekkai',    name: '結界術', desc: '3体以上の封印位置が三角を成すと結界が発動し、地図上に表示される。', locationBased: false },
     { id: 'reveal',    name: '霊視',   desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
