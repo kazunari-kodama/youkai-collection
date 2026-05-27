@@ -2030,12 +2030,17 @@ function _startHishoTimer() {
         });
         if (res.ok) {
           const d = res.data;
-          const msg = d.success
-            ? `式神が ${item.target_youkai_id} を封じた！（EXP +${d.exp_gained}）`
-            : `式神の封印失敗…（EXP +${d.exp_gained}）`;
+          let msg;
+          if (!d.trial_success) {
+            msg = `式神、跳ね返された…（${d.progress ?? 0}/${d.required} EXP +${d.exp_gained}）`;
+          } else if (d.sealed) {
+            msg = `式神が封印を完了！（EXP +${d.exp_gained}）`;
+          } else {
+            msg = `式神が一撃加えた（${d.progress}/${d.required} EXP +${d.exp_gained}）`;
+          }
           showToast(msg);
-          // 封印成功なら捕獲済みマーカーに更新
-          if (d.success) refreshYoukaiMarker(item.target_youkai_id, 'seal');
+          if (d.sealed) refreshYoukaiMarker(item.target_youkai_id, 'seal');
+          else if (d.trial_success) refreshYoukaiMarker(item.target_youkai_id, 'in_progress');
         }
       } catch { /* 次回リトライ */ }
     }
