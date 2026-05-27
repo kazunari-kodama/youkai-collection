@@ -38,7 +38,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   // ジョブ・ランク確認
   const profileRes = await ddb.send(new GetCommand({ TableName: PLAYER_PROFILE_TABLE, Key: { deviceId } }));
   const profile = profileRes.Item;
-  if (!profile || profile.job !== 'onmyoji') {
+  const isOnmyoji = profile?.job === 'onmyoji' || profile?.faction === 'exorcist';
+  if (!isOnmyoji) {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Job mismatch: onmyoji required' }) };
   }
   const rank = (profile.rank as string) ?? 'C';
