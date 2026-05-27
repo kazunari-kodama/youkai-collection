@@ -1586,11 +1586,10 @@ function _onWalkPosition(lat, lon) {
 
 const SKILL_DEFS = {
   onmyoji: [
-    { id: 'dokaishu',        name: '読解術',   desc: '未封印の妖の正体・属性を読み解く。封印圏（13m）より広い50m圏内で発動。', locationBased: true },
-    { id: 'shikigami',       name: '式神術',   desc: '封印した妖怪を式神化し使役する。封印済みの妖怪からコレクション画面で発動。', locationBased: false },
-    { id: 'kekkai',          name: '結界術',   desc: '3体以上の封印位置が三角を成すと結界が発動し、地図上に表示される。', locationBased: false },
-    { id: 'hisho_shikigami', name: '飛翔式神', desc: '術力を消費して式神を遠方へ飛ばし、妖怪を遠隔封印する。地図上の妖怪をタップして発射。', locationBased: true },
-    { id: 'reveal',          name: '霊視',     desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'dokaishu',  name: '読解術', desc: '未封印の妖の正体・属性を読み解く。封印圏（13m）より広い50m圏内で発動。', locationBased: true },
+    { id: 'shikigami', name: '式神術', desc: '術力を消費して式神を遠方へ飛ばし、妖怪を遠隔封印する。速度 1km=10分。地図上の妖怪マーカーをタップして発射。', locationBased: true },
+    { id: 'kekkai',    name: '結界術', desc: '3体以上の封印位置が三角を成すと結界が発動し、地図上に表示される。', locationBased: false },
+    { id: 'reveal',    name: '霊視',   desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   kitoshi: [
     { id: 'reveal',    name: '祈視',     desc: '祈りの力で妖怪の真名・伝承・出没地を見通す。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
@@ -1653,7 +1652,7 @@ function openSkillPanel() {
       ? '<div style="font-size:10px;color:#888;letter-spacing:0.05em;margin-top:4px;">※ 位置情報が必要</div>'
       : '';
     let actionBtn;
-    if (sk.id === 'hisho_shikigami') {
+    if (sk.id === 'shikigami') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateHishoMode()">式神を飛ばす</button>`;
     } else if (sk.locationBased) {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>地図・ボタンから発動</button>`;
@@ -1893,10 +1892,7 @@ openCollection = function(skillId = null) {
     const SUPERNATURAL_ROLES = ['yojutsushi', 'yamabushi', 'jujutsushi'];
     const isSupernatural = SUPERNATURAL_ROLES.includes(currentRole);
     let skillBtn = '';
-    if (skillId === 'shikigami' && actionType === 'seal' && job === 'onmyoji') {
-      skillBtn = `<button class="skill-action-btn" style="margin-top:4px;font-size:10px;padding:5px"
-        onclick="event.stopPropagation();activateShikigami('${y.id}')">式神化する</button>`;
-    } else if (skillId === 'reveal' && (actionType === 'seal' || actionType === 'bond')) {
+    if (skillId === 'reveal' && (actionType === 'seal' || actionType === 'bond')) {
       const btnColor = isSupernatural ? 'juju-btn' : '';
       skillBtn = `<button class="skill-action-btn ${btnColor}" style="margin-top:4px;font-size:10px;padding:5px"
         onclick="event.stopPropagation();activateReveal('${y.id}')">真名を解く</button>`;
@@ -2000,7 +1996,8 @@ function _renderHisho() {
     const icon = L.divIcon({
       html: `<div class="hisho-marker ${blinking}">式</div><div class="hisho-eta">${remainStr}</div>`,
       className: '',
-      iconAnchor: [16, 16],
+      iconSize: [32, 52],
+      iconAnchor: [14, 14],
     });
     const marker = L.marker([curLat, curLon], { icon, zIndexOffset: 500 }).addTo(map);
     _hishoLayers.push(marker);
