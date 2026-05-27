@@ -20,6 +20,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const limitParam = event.queryStringParameters?.limit;
   const limit = limitParam ? Math.min(parseInt(limitParam, 10), 500) : 200;
 
+  const cursorParam = event.queryStringParameters?.cursor;
+  let exclusiveStartKey: Record<string, unknown> | undefined;
+  if (cursorParam) {
+    try {
+      exclusiveStartKey = JSON.parse(decodeURIComponent(cursorParam));
+    } catch {
+      // 不正なカーソルは無視して先頭から取得
+    }
+  }
+
   const result = await ddb.send(
     new QueryCommand({
       TableName: CORE_TABLE,
@@ -28,6 +38,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       ExpressionAttributeValues: { ':pub': 'true' },
       Limit: limit,
       ScanIndexForward: false,
+      ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
     }),
   );
 
