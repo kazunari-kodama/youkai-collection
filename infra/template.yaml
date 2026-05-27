@@ -30,6 +30,7 @@ Globals:
         IMAGES_BUCKET: youkai-collection-images
         PLAYER_PROFILE_TABLE: !Ref PlayerProfileTable
         PATTERNS_TABLE: !Ref PatternsTable
+        FLYING_SHIKIGAMI_TABLE: !Ref FlyingShikigamiTable
 
 Resources:
   # API Gateway
@@ -160,6 +161,28 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+
+  # FlyingShikigami Table (陰陽師: 飛翔式神)
+  FlyingShikigamiTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-flying-shikigami
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: shikigami_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+        - AttributeName: shikigami_id
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
   # Captures Table (new)
   CapturesTable:
@@ -1208,6 +1231,101 @@ Resources:
           Properties:
             RestApiId: !Ref YokaiApi
             Path: /skill/utsushidori
+            Method: POST
+
+  # Lambda: POST /skill/hisho-shikigami (陰陽師: 飛翔式神 発射)
+  SkillHishoLaunchFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillHishoLaunch.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillHishoLaunch.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+                - !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:PutItem]
+              Resource: !GetAtt FlyingShikigamiTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/hisho-shikigami
+            Method: POST
+
+  # Lambda: GET /skill/hisho-shikigami (陰陽師: 飛翔式神 一覧)
+  SkillHishoListFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillHishoList.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillHishoList.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !GetAtt FlyingShikigamiTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/hisho-shikigami
+            Method: GET
+
+  # Lambda: POST /skill/hisho-shikigami/arrive (陰陽師: 飛翔式神 到達処理)
+  SkillHishoArriveFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillHishoArrive.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillHishoArrive.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt FlyingShikigamiTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/hisho-shikigami/arrive
             Method: POST
 
 Outputs:

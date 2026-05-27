@@ -295,6 +295,11 @@ function refreshMarker(youkaiId) {
 }
 
 async function handleMarkerTap(youkai) {
+  // 飛翔式神モード中はこのマーカーを目標に発射
+  if (state.hishoMode) {
+    await _launchHishoTo(youkai.id);
+    return;
+  }
   if (capturedIds.has(youkai.id)) {
     await showDetail(youkai.id);
     return;
@@ -1581,10 +1586,11 @@ function _onWalkPosition(lat, lon) {
 
 const SKILL_DEFS = {
   onmyoji: [
-    { id: 'dokaishu',  name: '読解術',   desc: '未封印の妖の正体・属性を読み解く。封印圏（13m）より広い50m圏内で発動。', locationBased: true },
-    { id: 'shikigami', name: '式神術',   desc: '封印した妖怪を式神化し使役する。封印済みの妖怪からコレクション画面で発動。', locationBased: false },
-    { id: 'kekkai',    name: '結界術',   desc: '3体以上の封印位置が三角を成すと結界が発動し、地図上に表示される。', locationBased: false },
-    { id: 'reveal',    name: '霊視',     desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'dokaishu',        name: '読解術',   desc: '未封印の妖の正体・属性を読み解く。封印圏（13m）より広い50m圏内で発動。', locationBased: true },
+    { id: 'shikigami',       name: '式神術',   desc: '封印した妖怪を式神化し使役する。封印済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'kekkai',          name: '結界術',   desc: '3体以上の封印位置が三角を成すと結界が発動し、地図上に表示される。', locationBased: false },
+    { id: 'hisho_shikigami', name: '飛翔式神', desc: '術力を消費して式神を遠方へ飛ばし、妖怪を遠隔封印する。地図上の妖怪をタップして発射。', locationBased: true },
+    { id: 'reveal',          name: '霊視',     desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   kitoshi: [
     { id: 'reveal',    name: '祈視',     desc: '祈りの力で妖怪の真名・伝承・出没地を見通す。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
@@ -1619,7 +1625,11 @@ function _initSkillUI() {
   const job = _currentJob();
   document.getElementById('btn-skills').style.display = currentRole ? '' : 'none';
   document.getElementById('btn-monyou').style.display = (job === 'jujutsushi') ? '' : 'none';
-  if (job === 'onmyoji') _checkAndRenderKekkai();
+  if (job === 'onmyoji') {
+    _checkAndRenderKekkai();
+    _loadHisho();
+    _startHishoTimer();
+  }
   refreshJutsuHUD();
 }
 
@@ -1642,9 +1652,14 @@ function openSkillPanel() {
     const locationNote = sk.locationBased
       ? '<div style="font-size:10px;color:#888;letter-spacing:0.05em;margin-top:4px;">※ 位置情報が必要</div>'
       : '';
-    const actionBtn = sk.locationBased
-      ? `<button class="skill-action-btn ${isBtnColor}" disabled>地図・ボタンから発動</button>`
-      : `<button class="skill-action-btn ${isBtnColor}" onclick="openCollectionForSkill('${sk.id}')">コレクションから発動</button>`;
+    let actionBtn;
+    if (sk.id === 'hisho_shikigami') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateHishoMode()">式神を飛ばす</button>`;
+    } else if (sk.locationBased) {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>地図・ボタンから発動</button>`;
+    } else {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="openCollectionForSkill('${sk.id}')">コレクションから発動</button>`;
+    }
 
     html += `
       <div class="skill-card">
@@ -1934,6 +1949,153 @@ async function openUtsushidoriPicker(youkaiId) {
     '',
   );
   document.getElementById('skill-result-body').innerHTML = btnHtml;
+}
+
+// ---- 飛翔式神 (陰陽師: 遠隔封印) --------------------------------
+let _hishoLayers   = [];   // 地図上の描画レイヤ
+let _hishoTimerId  = null; // アニメーションタイマー
+let _hishoData     = [];   // 現在飛行中の式神リスト
+
+function _hishoProgress(item) {
+  const start = new Date(item.launched_at).getTime();
+  const end   = new Date(item.arrives_at).getTime();
+  return Math.min(1, Math.max(0, (Date.now() - start) / (end - start)));
+}
+
+function _hishoCurrentPos(item) {
+  const p = _hishoProgress(item);
+  return [
+    item.launch_lat + (item.target_lat - item.launch_lat) * p,
+    item.launch_lon + (item.target_lon - item.launch_lon) * p,
+  ];
+}
+
+function _renderHisho() {
+  _hishoLayers.forEach((l) => map.removeLayer(l));
+  _hishoLayers = [];
+
+  _hishoData.forEach((item) => {
+    const progress = _hishoProgress(item);
+    if (progress >= 1) return;
+
+    const [curLat, curLon] = _hishoCurrentPos(item);
+
+    // 飛行ルート（点線）
+    const line = L.polyline(
+      [[item.launch_lat, item.launch_lon], [item.target_lat, item.target_lon]],
+      { color: '#c8a84b', weight: 1.5, dashArray: '5 6', opacity: 0.7 },
+    ).addTo(map);
+    _hishoLayers.push(line);
+
+    // 残り時間
+    const remainSec = Math.max(0, Math.ceil((new Date(item.arrives_at).getTime() - Date.now()) / 1000));
+    const remainStr = remainSec >= 3600
+      ? `${Math.floor(remainSec / 3600)}h${Math.floor((remainSec % 3600) / 60)}m`
+      : remainSec >= 60
+        ? `${Math.floor(remainSec / 60)}m${remainSec % 60}s`
+        : `${remainSec}s`;
+
+    // 式神アイコン（近距離点滅）
+    const blinking = remainSec < 60 ? 'hisho-blink' : '';
+    const icon = L.divIcon({
+      html: `<div class="hisho-marker ${blinking}">式</div><div class="hisho-eta">${remainStr}</div>`,
+      className: '',
+      iconAnchor: [16, 16],
+    });
+    const marker = L.marker([curLat, curLon], { icon, zIndexOffset: 500 }).addTo(map);
+    _hishoLayers.push(marker);
+  });
+}
+
+async function _loadHisho() {
+  if (currentRole !== 'onmyoji') return;
+  try {
+    const data = await apiGet(`/skill/hisho-shikigami?deviceId=${encodeURIComponent(DEVICE_ID)}`);
+    _hishoData = data.shikigami ?? [];
+  } catch { _hishoData = []; }
+  _renderHisho();
+}
+
+function _startHishoTimer() {
+  if (_hishoTimerId) return;
+  _hishoTimerId = setInterval(async () => {
+    if (!_hishoData.length) return;
+    _renderHisho();
+
+    // 到達済みチェック
+    for (const item of [..._hishoData]) {
+      if (_hishoProgress(item) < 1) continue;
+      _hishoData = _hishoData.filter((i) => i.shikigami_id !== item.shikigami_id);
+      try {
+        const res = await apiPost('/skill/hisho-shikigami/arrive', {
+          deviceId: DEVICE_ID,
+          shikigamiId: item.shikigami_id,
+        });
+        if (res.ok) {
+          const d = res.data;
+          const msg = d.success
+            ? `式神が ${item.target_youkai_id} を封じた！（EXP +${d.exp_gained}）`
+            : `式神の封印失敗…（EXP +${d.exp_gained}）`;
+          showToast(msg);
+          // 封印成功なら捕獲済みマーカーに更新
+          if (d.success) refreshYoukaiMarker(item.target_youkai_id, 'seal');
+        }
+      } catch { /* 次回リトライ */ }
+    }
+  }, 5000);
+}
+
+// 飛翔式神モード: 地図上で目標をタップ
+function activateHishoMode() {
+  if (!state.playerPos) { showToast('現在地不明'); return; }
+  state.hishoMode = true;
+  map.closePopup();
+  showToast('目標の妖怪マーカーをタップせよ', 3000);
+  document.getElementById('map').style.cursor = 'crosshair';
+}
+
+function _cancelHishoMode() {
+  state.hishoMode = false;
+  document.getElementById('map').style.cursor = '';
+}
+
+async function _launchHishoTo(youkaiId) {
+  _cancelHishoMode();
+  showToast('式神を飛ばしています…');
+  const res = await apiPost('/skill/hisho-shikigami', {
+    deviceId:       DEVICE_ID,
+    targetYoukaiId: youkaiId,
+    userLat:        state.playerPos.lat,
+    userLon:        state.playerPos.lon,
+  });
+  if (!res.ok) {
+    const err = res.data?.error ?? 'エラー';
+    showToast(`飛翔式神失敗: ${err}`);
+    return;
+  }
+  const d = res.data;
+  const etaMin = d.flight_minutes;
+  const etaStr = etaMin >= 60
+    ? `${Math.floor(etaMin / 60)}時間${etaMin % 60}分`
+    : `${etaMin}分`;
+  const knownMsg = d.shinmei_known ? '（真名既知：成功率90%）' : '（真名未知：成功率40%）';
+  showSkillResult(
+    '飛 翔 式 神 発 動',
+    `距離：${d.distance_km}km\n到達まで：${etaStr}\n\n${knownMsg}\n\nスロット：${d.flying_count} / ${d.max_slots}`,
+  );
+  _hishoData.push({
+    shikigami_id:     d.shikigami_id,
+    launch_lat:       d.launch_lat,
+    launch_lon:       d.launch_lon,
+    target_lat:       d.target_lat,
+    target_lon:       d.target_lon,
+    target_youkai_id: d.target_youkai_id,
+    launched_at:      d.launched_at,
+    arrives_at:       d.arrives_at,
+    status:           'flying',
+  });
+  _renderHisho();
+  _startHishoTimer();
 }
 
 // 全 const/関数が定義された後でスキルUIを初期化
