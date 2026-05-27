@@ -35,14 +35,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 
-  // ジョブ・ランク確認
+  // ランク取得（プロファイル未作成でも C 扱い）
   const profileRes = await ddb.send(new GetCommand({ TableName: PLAYER_PROFILE_TABLE, Key: { deviceId } }));
   const profile = profileRes.Item;
-  const isOnmyoji = profile?.job === 'onmyoji' || profile?.faction === 'exorcist';
-  if (!isOnmyoji) {
-    return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Job mismatch: onmyoji required' }) };
-  }
-  const rank = (profile.rank as string) ?? 'C';
+  const rank = (profile?.rank as string) ?? 'C';
   const maxSlots = RANK_SHIKIGAMI_SLOTS[rank] ?? 1;
 
   // 飛行中スロット数チェック
