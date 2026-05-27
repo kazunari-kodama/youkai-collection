@@ -1623,6 +1623,7 @@ function _initSkillUI() {
   const job = _currentJob();
   document.getElementById('btn-skills').style.display = currentRole ? '' : 'none';
   document.getElementById('btn-monyou').style.display = (job === 'jujutsushi') ? '' : 'none';
+  _loadPublicBarriers();
   if (job === 'onmyoji') {
     _loadKekkaiStones();
     _loadHisho();
@@ -1754,49 +1755,63 @@ async function activateShikigami(youkaiId) {
 }
 
 // ---- 結界術 (石設置・地図表示) -----------------------
-let _kekkaiLayers = [];
-let _kekkaiData = { stones: [], barriers: [] };
+let _kekkaiStoneLayers   = [];  // 石マーカー（本人のみ表示）
+let _kekkaiBarrierLayers = [];  // 結界ポリゴン（全員表示）
+let _kekkaiMyStones = [];
 
-function _renderKekkaiStones() {
-  _kekkaiLayers.forEach((l) => map.removeLayer(l));
-  _kekkaiLayers = [];
+function _renderBarriers(barriers) {
+  _kekkaiBarrierLayers.forEach((l) => map.removeLayer(l));
+  _kekkaiBarrierLayers = [];
+  (barriers ?? []).forEach((b) => {
+    const pts = b.lats.map((lat, i) => [lat, b.lons[i]]);
+    const poly = L.polygon(pts, {
+      color:       '#1e5fa8',
+      fillColor:   '#1e5fa8',
+      fillOpacity: 0.1,
+      weight:      2,
+    }).addTo(map);
+    _kekkaiBarrierLayers.push(poly);
+  });
+}
 
-  _kekkaiData.stones.forEach((s) => {
+async function _loadPublicBarriers() {
+  const data = await apiGet('/skill/kekkai/barriers').catch(() => null);
+  if (!data) return;
+  _renderBarriers(data.barriers ?? []);
+}
+
+async function _loadKekkaiStones() {
+  if (currentRole !== 'onmyoji') return;
+  const data = await apiGet(`/skill/kekkai/stones?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
+  if (!data) return;
+
+  _kekkaiStoneLayers.forEach((l) => map.removeLayer(l));
+  _kekkaiStoneLayers = [];
+  _kekkaiMyStones = data.stones ?? [];
+
+  _kekkaiMyStones.forEach((s) => {
     const icon = L.divIcon({
       className: '',
       html: `<div class="kekkai-stone-marker">石</div>`,
-      iconSize: [28, 28],
+      iconSize:   [28, 28],
       iconAnchor: [14, 14],
     });
     const m = L.marker([s.lat, s.lon], { icon })
       .bindPopup(`<div style="font-size:12px;text-align:center;">結界石<br><small>${new Date(s.placed_at).toLocaleDateString('ja-JP')}</small></div>`)
       .addTo(map);
-    _kekkaiLayers.push(m);
+    _kekkaiStoneLayers.push(m);
   });
 
-  _kekkaiData.barriers.forEach((b) => {
-    const pts = b.lats.map((lat, i) => [lat, b.lons[i]]);
-    const poly = L.polygon(pts, {
-      color: '#1e5fa8',
-      fillColor: '#1e5fa8',
-      fillOpacity: 0.14,
-      weight: 2,
-      dashArray: '6 4',
-    }).addTo(map);
-    _kekkaiLayers.push(poly);
-  });
-
+  const stoneCount   = _kekkaiMyStones.length;
+  const barrierCount = (data.barriers ?? []).length;
   const hint = document.querySelector('.kekkai-hint');
-  const stoneCount   = _kekkaiData.stones.length;
-  const barrierCount = _kekkaiData.barriers.length;
   if (stoneCount > 0 || barrierCount > 0) {
     const msg = [
       stoneCount   > 0 ? `石 ${stoneCount}個` : '',
       barrierCount > 0 ? `結界 ${barrierCount}陣 展開中` : '',
     ].filter(Boolean).join(' / ');
-    if (hint) {
-      hint.textContent = msg;
-    } else {
+    if (hint) { hint.textContent = msg; }
+    else {
       const el = document.createElement('div');
       el.className = 'kekkai-hint';
       el.textContent = msg;
@@ -1805,14 +1820,9 @@ function _renderKekkaiStones() {
   } else if (hint) {
     hint.remove();
   }
-}
 
-async function _loadKekkaiStones() {
-  if (currentRole !== 'onmyoji') return;
-  const data = await apiGet(`/skill/kekkai/stones?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
-  if (!data) return;
-  _kekkaiData = { stones: data.stones ?? [], barriers: data.barriers ?? [] };
-  _renderKekkaiStones();
+  // 結界ポリゴンは公開エンドポイントで全員分を再取得
+  await _loadPublicBarriers();
 }
 
 async function activateKekkaiStone() {
@@ -1824,13 +1834,12 @@ async function activateKekkaiStone() {
     userLon:  state.playerPos.lon,
   });
   if (!res.ok) {
-    const msg = res.data?.error ?? 'エラー';
     if (res.status === 402) {
       showToast(`術力不足（必要: ${res.data?.required ?? '?'}）`);
     } else if (res.status === 409) {
       showToast(`石の上限に達しています（${res.data?.current}/${res.data?.max}）`);
     } else {
-      showToast(`結界術失敗: ${msg}`);
+      showToast(`結界術失敗: ${res.data?.error ?? 'エラー'}`);
     }
     return;
   }

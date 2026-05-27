@@ -1407,6 +1407,33 @@ Resources:
             Path: /skill/kekkai/stone
             Method: POST
 
+  # Lambda: GET /skill/kekkai/barriers (全員: 有効な結界一覧)
+  SkillKekkaiBarriersPublicFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKekkaiBarriersPublic.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKekkaiBarriersPublic.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !GetAtt KekkaiBarriersTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kekkai/barriers
+            Method: GET
+
   # Lambda: GET /skill/kekkai/stones (陰陽師: 結界術 — 石・結界一覧)
   SkillKekkaiStonesFunction:
     Type: AWS::Serverless::Function
