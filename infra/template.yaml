@@ -31,6 +31,8 @@ Globals:
         PLAYER_PROFILE_TABLE: !Ref PlayerProfileTable
         PATTERNS_TABLE: !Ref PatternsTable
         FLYING_SHIKIGAMI_TABLE: !Ref FlyingShikigamiTable
+        KEKKAI_STONES_TABLE:   !Ref KekkaiStonesTable
+        KEKKAI_BARRIERS_TABLE: !Ref KekkaiBarriersTable
 
 Resources:
   # API Gateway
@@ -179,6 +181,47 @@ Resources:
         - AttributeName: deviceId
           KeyType: HASH
         - AttributeName: shikigami_id
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  # KekkaiStones Table (陰陽師: 結界術 — 設置中の石)
+  KekkaiStonesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-kekkai-stones
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: stone_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+        - AttributeName: stone_id
+          KeyType: RANGE
+
+  # KekkaiBarriers Table (陰陽師: 結界術 — 成立した結界)
+  KekkaiBarriersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-kekkai-barriers
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: barrier_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+        - AttributeName: barrier_id
           KeyType: RANGE
       TimeToLiveSpecification:
         AttributeName: ttl
@@ -1330,6 +1373,68 @@ Resources:
             RestApiId: !Ref YokaiApi
             Path: /skill/hisho-shikigami/arrive
             Method: POST
+
+  # Lambda: POST /skill/kekkai/stone (陰陽師: 結界術 — 石を設置)
+  SkillKekkaiPlaceStoneFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKekkaiPlaceStone.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKekkaiPlaceStone.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:PutItem, dynamodb:DeleteItem]
+              Resource: !GetAtt KekkaiStonesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:PutItem]
+              Resource: !GetAtt KekkaiBarriersTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kekkai/stone
+            Method: POST
+
+  # Lambda: GET /skill/kekkai/stones (陰陽師: 結界術 — 石・結界一覧)
+  SkillKekkaiStonesFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKekkaiStones.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKekkaiStones.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource:
+                - !GetAtt KekkaiStonesTable.Arn
+                - !GetAtt KekkaiBarriersTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kekkai/stones
+            Method: GET
 
 Outputs:
   UserPoolId:

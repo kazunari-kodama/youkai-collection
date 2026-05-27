@@ -12,6 +12,8 @@ export const CORE_TABLE = process.env.CORE_TABLE!;
 export const PLAYER_PROFILE_TABLE = process.env.PLAYER_PROFILE_TABLE!;
 export const PATTERNS_TABLE          = process.env.PATTERNS_TABLE!;
 export const FLYING_SHIKIGAMI_TABLE  = process.env.FLYING_SHIKIGAMI_TABLE!;
+export const KEKKAI_STONES_TABLE     = process.env.KEKKAI_STONES_TABLE!;
+export const KEKKAI_BARRIERS_TABLE   = process.env.KEKKAI_BARRIERS_TABLE!;
 
 /** images[0] → camera URL
  *  "youkai/xxx_camera.png"  → "{base}/youkai/xxx_camera.png"  (direct key, new format)

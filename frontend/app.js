@@ -1587,7 +1587,7 @@ function _onWalkPosition(lat, lon) {
 const SKILL_DEFS = {
   onmyoji: [
     { id: 'shikigami', name: '式神術', desc: '術力を消費して式神を遠方へ飛ばし、妖怪を遠隔封印する。速度 1km=10分。地図上の妖怪マーカーをタップして発射。', locationBased: true },
-    { id: 'kekkai',    name: '結界術', desc: '3体以上の封印位置が三角を成すと結界が発動し、地図上に表示される。', locationBased: false },
+    { id: 'kekkai',    name: '結界術', desc: '術力を消費して現在地に石を一つ置く。3つの石が三角形（面積1,000m²以上）を成すと結界が7日間張られる。ランクにより石の最大数・面積上限が変わる。', locationBased: true },
     { id: 'reveal',    name: '霊視',   desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   kitoshi: [
@@ -1624,7 +1624,7 @@ function _initSkillUI() {
   document.getElementById('btn-skills').style.display = currentRole ? '' : 'none';
   document.getElementById('btn-monyou').style.display = (job === 'jujutsushi') ? '' : 'none';
   if (job === 'onmyoji') {
-    _checkAndRenderKekkai();
+    _loadKekkaiStones();
     _loadHisho();
     _startHishoTimer();
   }
@@ -1653,6 +1653,8 @@ function openSkillPanel() {
     let actionBtn;
     if (sk.id === 'shikigami') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateHishoMode()">式神を飛ばす</button>`;
+    } else if (sk.id === 'kekkai') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKekkaiStone()">現在地に石を置く</button>`;
     } else if (sk.locationBased) {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>地図・ボタンから発動</button>`;
     } else {
@@ -1751,42 +1753,98 @@ async function activateShikigami(youkaiId) {
   );
 }
 
-// ---- 結界術 (自動チェック・地図表示) -----------------------
+// ---- 結界術 (石設置・地図表示) -----------------------
 let _kekkaiLayers = [];
+let _kekkaiData = { stones: [], barriers: [] };
 
-async function _checkAndRenderKekkai() {
-  if (currentRole !== 'onmyoji') return;
-  const data = await apiGet(`/skill/kekkai?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
-  if (!data) return;
-
+function _renderKekkaiStones() {
   _kekkaiLayers.forEach((l) => map.removeLayer(l));
   _kekkaiLayers = [];
 
-  if (data.kekkais?.length) {
-    data.kekkais.forEach((k) => {
-      const pts = k.yokai_ids.map((id) => {
-        const item = youkaiMarkers[id];
-        return item ? [item.data.lat, item.data.lon] : null;
-      }).filter(Boolean);
-      if (pts.length < 3) return;
-      const poly = L.polygon(pts, {
-        color: '#1e5fa8',
-        fillColor: '#1e5fa8',
-        fillOpacity: 0.12,
-        weight: 1.5,
-        dashArray: '6 4',
-      }).addTo(map);
-      _kekkaiLayers.push(poly);
+  _kekkaiData.stones.forEach((s) => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="kekkai-stone-marker">石</div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
     });
+    const m = L.marker([s.lat, s.lon], { icon })
+      .bindPopup(`<div style="font-size:12px;text-align:center;">結界石<br><small>${new Date(s.placed_at).toLocaleDateString('ja-JP')}</small></div>`)
+      .addTo(map);
+    _kekkaiLayers.push(m);
+  });
 
-    const hint = document.querySelector('.kekkai-hint');
-    if (!hint) {
+  _kekkaiData.barriers.forEach((b) => {
+    const pts = b.lats.map((lat, i) => [lat, b.lons[i]]);
+    const poly = L.polygon(pts, {
+      color: '#1e5fa8',
+      fillColor: '#1e5fa8',
+      fillOpacity: 0.14,
+      weight: 2,
+      dashArray: '6 4',
+    }).addTo(map);
+    _kekkaiLayers.push(poly);
+  });
+
+  const hint = document.querySelector('.kekkai-hint');
+  const stoneCount   = _kekkaiData.stones.length;
+  const barrierCount = _kekkaiData.barriers.length;
+  if (stoneCount > 0 || barrierCount > 0) {
+    const msg = [
+      stoneCount   > 0 ? `石 ${stoneCount}個` : '',
+      barrierCount > 0 ? `結界 ${barrierCount}陣 展開中` : '',
+    ].filter(Boolean).join(' / ');
+    if (hint) {
+      hint.textContent = msg;
+    } else {
       const el = document.createElement('div');
       el.className = 'kekkai-hint';
-      el.textContent = `結界 ${data.kekkais.length}陣 展開中`;
+      el.textContent = msg;
       document.body.appendChild(el);
     }
+  } else if (hint) {
+    hint.remove();
   }
+}
+
+async function _loadKekkaiStones() {
+  if (currentRole !== 'onmyoji') return;
+  const data = await apiGet(`/skill/kekkai/stones?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
+  if (!data) return;
+  _kekkaiData = { stones: data.stones ?? [], barriers: data.barriers ?? [] };
+  _renderKekkaiStones();
+}
+
+async function activateKekkaiStone() {
+  if (!state.playerPos) { showToast('現在地が取得できません'); return; }
+  showToast('石を設置中…');
+  const res = await apiPost('/skill/kekkai/stone', {
+    deviceId: DEVICE_ID,
+    userLat:  state.playerPos.lat,
+    userLon:  state.playerPos.lon,
+  });
+  if (!res.ok) {
+    const msg = res.data?.error ?? 'エラー';
+    if (res.status === 402) {
+      showToast(`術力不足（必要: ${res.data?.required ?? '?'}）`);
+    } else if (res.status === 409) {
+      showToast(`石の上限に達しています（${res.data?.current}/${res.data?.max}）`);
+    } else {
+      showToast(`結界術失敗: ${msg}`);
+    }
+    return;
+  }
+  const d = res.data;
+  if (d.barrier_formed) {
+    const areaKm2 = (d.barrier.area_m2 / 1_000_000).toFixed(3);
+    showSkillResult(
+      '結界術 — 結 界 成 立',
+      `三角結界が張られました。\n面積: ${(d.barrier.area_m2).toLocaleString()}m²（${areaKm2}km²）\n\n7日後に消滅します。`,
+    );
+  } else {
+    showToast(`石を設置しました（${d.stones_count}/${d.max_stones}個）\n術力残: ${d.jutsu_remaining}`);
+  }
+  await _loadKekkaiStones();
 }
 
 // ---- 真名解明スキル (全ロール) ------------------------------

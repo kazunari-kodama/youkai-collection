@@ -61,6 +61,7 @@ export const JUTSU_COST = {
   skill_dokaishu:          10,
   skill_shikigami:         20,
   skill_hisho_shikigami:   15,
+  skill_kekkai_stone:      10,
   skill_kotodama:          15,
   skill_monyou:            25,
   skill_utsushidori:       20,
@@ -95,6 +96,42 @@ export interface FlyingShikigamiDBItem {
   status:           FlyingShikigamiStatus;
   result_at?:       string;
   ttl:              number;
+}
+
+// ---- 結界術定数 ----
+export const KEKKAI_MIN_AREA_M2 = 1_000;
+
+export const RANK_KEKKAI_MAX_AREA_M2: Record<string, number> = {
+  C:  50_000,
+  B:  200_000,
+  A:  1_000_000,
+  S:  5_000_000,
+  SS: 20_000_000,
+};
+
+export const RANK_KEKKAI_STONE_LIMIT: Record<string, number> = {
+  C: 3, B: 5, A: 7, S: 9, SS: 12,
+};
+
+export interface KekkaiStoneDBItem {
+  deviceId:  string;
+  stone_id:  string;
+  lat:       number;
+  lon:       number;
+  placed_at: string;
+}
+
+export interface KekkaiBarrierDBItem {
+  deviceId:   string;
+  barrier_id: string;
+  lats:       number[];
+  lons:       number[];
+  center_lat: number;
+  center_lon: number;
+  area_m2:    number;
+  formed_at:  string;
+  expires_at: string;
+  ttl:        number;
 }
 
 /** PatternsTable の1レコード */

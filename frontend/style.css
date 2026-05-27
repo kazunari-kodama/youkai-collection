@@ -1785,6 +1785,22 @@ html, body {
   pointer-events: none;
 }
 
+/* 結界術 石マーカー */
+.kekkai-stone-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(30, 95, 168, 0.2);
+  border: 1.5px solid rgba(30, 95, 168, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #7ab4ff;
+  font-family: 'Shippori Mincho B1', serif;
+  letter-spacing: 0;
+}
+
 /* 飛翔式神 マーカー */
 .hisho-marker {
   width: 28px;
