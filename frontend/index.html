@@ -129,6 +129,7 @@
     <div class="modal-desc" id="unseal-desc"></div>
     <div class="modal-meta" id="unseal-meta"></div>
     <button class="btn-primary" id="btn-confirm-capture" onclick="confirmCapture()">図 鑑 に 封 じ る</button>
+    <button class="btn-chinkon" id="btn-chinkon" onclick="confirmChinkon()" style="display:none">鎮 魂 術 を 施 す</button>
   </div>
 </div>
 
@@ -320,11 +321,6 @@
     <button class="skill-result-close" onclick="closeSkillResult()">閉じる</button>
   </div>
 </div>
-
-<!-- 紋様術 floating button (呪術師専用) -->
-<button class="float-btn monyou-btn" id="btn-monyou" onclick="activateMonyou()" style="display:none" title="紋を刻む">
-  <span style="font-family:'Shippori Mincho B1',serif;font-size:18px;letter-spacing:0.05em;">紋</span>
-</button>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>

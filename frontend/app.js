@@ -272,6 +272,8 @@ function addYoukaiMarker(youkai) {
       `<img src="assets/images/hitodama.png" alt="">` +
       `<div class="marker-progress-wrap"><div class="marker-progress-fill" style="width:${pct}%"></div></div>` +
       `</div>`;
+  } else if (aragamiSet.has(youkai.id)) {
+    markerHtml = `<div class="hitodama-marker aragami-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.png" alt=""></div>`;
   } else {
     markerHtml = `<div class="hitodama-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.png" alt=""></div>`;
   }
@@ -475,6 +477,13 @@ async function triggerUnseal(youkaiId) {
   btn.disabled = false;
   btn.textContent = isSupernatural ? '共 存 の 契 り を 結 ぶ' : '図 鑑 に 封 じ る';
 
+  // 鎮魂術ボタン: 神子 かつ 荒魂化されている場合のみ表示
+  const chinkonBtn = document.getElementById('btn-chinkon');
+  const isAragami  = aragamiSet.has(youkaiId);
+  chinkonBtn.style.display = (currentRole === 'miko' && isAragami) ? '' : 'none';
+  chinkonBtn.disabled = false;
+  chinkonBtn.textContent = '鎮 魂 術 を 施 す';
+
   document.getElementById('unseal-modal').classList.add('show');
 
   requestAnimationFrame(() => {
@@ -504,6 +513,7 @@ async function confirmCapture() {
     userLon: state.playerPos.lon,
     actionType: isSupernatural ? 'bond' : 'seal',
     faction: currentFaction ?? 'exorcist',
+    job: currentRole,
   };
   if (detail.rally_key) captureBody.rallyKey = detail.rally_key;
   if (state.pendingQrCode) captureBody.qrCode = state.pendingQrCode;
@@ -539,8 +549,12 @@ async function confirmCapture() {
     refreshMarker(detail.id);
     closeUnseal();
     state.pendingUnseal = null;
-    const bonusNote = resData.kekkai_bonus ? '【結界ボーナス】 ' : '';
-    showToast(`${bonusNote}封印進行中 ${resData.progress}/${resData.required}（${resData.rank_name ?? ''}）`, 2500);
+    const bonusNote      = resData.kekkai_bonus      ? '【結界】 '      : '';
+    const nigitamaNote   = resData.nigitama_bonus    ? '【和魂印】 '    : '';
+    const chukichiNote   = resData.chukichi_bonus    ? '【中吉】 '      : '';
+    const debuffNote     = resData.aragami_debuff    ? '【荒魂】 '      : '';
+    const yamabushiNote  = resData.yamabushi_bonus   ? `【踏破-${resData.yamabushi_bonus}】 ` : '';
+    showToast(`${debuffNote}${bonusNote}${nigitamaNote}${chukichiNote}${yamabushiNote}封印進行中 ${resData.progress}/${resData.required}（${resData.rank_name ?? ''}）`, 2500);
     return;
   }
 
@@ -567,6 +581,44 @@ async function confirmCapture() {
       ? `${rankLabel}「${detail.name}」と共存の契りを結んだ`
       : `${rankLabel}「${detail.name}」を図鑑に封じた`);
   }
+}
+
+async function confirmChinkon() {
+  if (!state.pendingUnseal || !state.playerPos) return;
+  const detail = state.pendingUnseal;
+  const btn = document.getElementById('btn-chinkon');
+  btn.disabled = true;
+  btn.textContent = '鎮魂中…';
+
+  const res = await apiPost('/skill/chinkon', {
+    deviceId: DEVICE_ID,
+    youkaiId: detail.id,
+    userLat:  state.playerPos.lat,
+    userLon:  state.playerPos.lon,
+  });
+
+  if (!res.ok) {
+    btn.disabled = false;
+    btn.textContent = '鎮 魂 術 を 施 す';
+    const errMap = {
+      'Miko only':       '神子のみ使用できる',
+      'Too far':         '位置が離れすぎている',
+      'Not aragami':     'この妖怪は荒魂化していない',
+      'Rank too low':    `ランクが足りない（${res.data?.youryoku_name ?? ''}以上が必要）`,
+      'Insufficient jutsuriyoku': '術力が不足している',
+    };
+    showToast(`鎮魂術失敗: ${errMap[res.data?.error] ?? res.data?.error ?? 'エラー'}`);
+    return;
+  }
+
+  const d = res.data;
+  aragamiSet.delete(detail.id);
+  refreshMarker(detail.id);
+  closeUnseal();
+  showSkillResult(
+    '鎮 魂 術 — 和 魂 化',
+    `${d.youkaiName}の荒魂を鎮めた。\n\n和魂印が宿り、次の封印がより容易になる。\n\n（EXP +${d.exp_gained}、術力 -15）`,
+  );
 }
 
 function closeUnseal() {
@@ -1616,24 +1668,28 @@ const SKILL_DEFS = {
     { id: 'reveal',    name: '祈視',     desc: '祈りの力で妖怪の真名・伝承・出没地を見通す。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   miko: [
-    { id: 'reveal',    name: '神降',     desc: '神の力を借りて妖怪の真名・伝承・出没地を顕現させる。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'reveal',   name: '神降',   desc: '神の力を借りて妖怪の真名・伝承・出没地を顕現させる。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'chinkon',  name: '鎮魂術', desc: '荒魂化した妖怪の魂を鎮め、和魂へと変容させる。荒魂妖怪の13m圏内で発動。神子のランクが妖怪の妖力と同等以上でなければ使えない。', locationBased: true },
+    { id: 'omikuji',  name: 'おみくじ', desc: '神意を問い、運命を引く。1日1回のみ。大吉〜大凶まで5種。', locationBased: false },
   ],
   yojutsushi: [
     { id: 'reveal',    name: '妖眼',     desc: '妖術の眼で妖怪の真の姿・伝承・出没地を看破する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   yamabushi: [
-    { id: 'reveal',    name: '験視',     desc: '山岳修行で得た験力で妖怪の真名・伝承・出没地を見抜く。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'reveal',               name: '験視',       desc: '山岳修行で得た験力で妖怪の真名・伝承・出没地を見抜く。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'yamabushi_traversal',  name: '踏破視覚化', desc: '各地域の妖怪踏破率を確認し、20%毎に試行回数ボーナスを獲得（最大-5）。', locationBased: false },
+    { id: 'yamabushi_stone',      name: '石積み',     desc: '術力5を消費して現在地に石を積む。自分の踏破の目印になり全プレイヤーに見える。', locationBased: true },
   ],
   jujutsushi: [
     { id: 'reveal',      name: '言霊術',    desc: '言霊の力で妖怪の真名・伝承・出没地を解き明かす。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
-    { id: 'monyou',      name: '紋様術',    desc: '現在地に紋様を刻む。1日1回、地図左下のボタンから発動。', locationBased: true },
+    { id: 'tamafuri',    name: '魂振',      desc: '解除した妖怪の魂を振り起こし、荒魂化させる。荒魂妖怪は周囲の結界を乱し、封印の試みを困難にする。コレクション画面の解除済み妖怪から発動。', locationBased: false },
     { id: 'utsushidori', name: '写し取り',  desc: '契約した妖怪の力（属性キーワード）を己の内に写し取る。', locationBased: false },
   ],
 };
 
 const ROLE_JOB = {
-  onmyoji: 'onmyoji', kitoshi: null, miko: null,
-  yojutsushi: null, yamabushi: null, jujutsushi: 'jujutsushi',
+  onmyoji: 'onmyoji', kitoshi: null, miko: 'miko',
+  yojutsushi: null, yamabushi: 'yamabushi', jujutsushi: 'jujutsushi',
 };
 
 function _currentJob() {
@@ -1642,10 +1698,11 @@ function _currentJob() {
 }
 
 function _initSkillUI() {
-  const job = _currentJob();
   document.getElementById('btn-skills').style.display = currentRole ? '' : 'none';
-  document.getElementById('btn-monyou').style.display = (job === 'jujutsushi') ? '' : 'none';
   _loadPublicBarriers();
+  _loadAragami();
+  _loadYamabushiStones();
+  const job = _currentJob();
   if (job === 'onmyoji') {
     _loadKekkaiStones();
     _loadHisho();
@@ -1678,6 +1735,16 @@ function openSkillPanel() {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateHishoMode()">式神を飛ばす</button>`;
     } else if (sk.id === 'kekkai') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKekkaiStone()">現在地に石を置く</button>`;
+    } else if (sk.id === 'tamafuri') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();openCollectionForSkill('tamafuri')">解除済み妖怪を選ぶ</button>`;
+    } else if (sk.id === 'chinkon') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>荒魂妖怪に近づいて発動</button>`;
+    } else if (sk.id === 'omikuji') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateOmikuji()">神意を問う</button>`;
+    } else if (sk.id === 'yamabushi_traversal') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiTraversal()">踏破率を確認する</button>`;
+    } else if (sk.id === 'yamabushi_stone') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiStone()">現在地に石を積む</button>`;
     } else if (sk.locationBased) {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>地図・ボタンから発動</button>`;
     } else {
@@ -1900,44 +1967,116 @@ async function activateReveal(youkaiId) {
   );
 }
 
-// ---- 紋様術 (地図フローティングボタン) ----------------------
-async function activateMonyou() {
-  if (!state.playerPos) { showToast('現在地を取得してください'); return; }
-  if (currentRole !== 'jujutsushi') return;
-  const res = await apiPost('/skill/monyou', {
-    deviceId: DEVICE_ID,
-    userLat: state.playerPos.lat,
-    userLon: state.playerPos.lon,
-  });
+// ---- 魂振 (コレクション: 解除済み妖怪から発動) ---------------
+async function activateTamafuri(youkaiId) {
+  const res = await apiPost('/skill/tamafuri', { deviceId: DEVICE_ID, youkaiId });
   if (!res.ok) {
-    const msg = res.data?.error === 'Daily limit reached'
-      ? '今日の紋様術はすでに発動した'
-      : `紋様術失敗: ${res.data?.error ?? 'エラー'}`;
-    showToast(msg);
+    const errMap = {
+      'Jujutsushi only':        '呪術師のみ発動できる',
+      'Yokai not released by you': 'この妖怪を解除していない',
+      'Already aragami':        'すでに荒魂化されている',
+      'Insufficient jutsuriyoku': '術力が不足している',
+    };
+    showToast(`魂振失敗: ${errMap[res.data?.error] ?? res.data?.error ?? 'エラー'}`);
     return;
   }
   const d = res.data;
-  const exp = new Date(d.expires_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  const expStr = new Date(d.expires_at).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   showSkillResult(
-    '紋 様 術 — 刻 印',
-    `この地に紋様を刻んだ。\n\n有効期限：${exp} まで\n\n（EXP +${d.exp_gained}）`,
+    '魂 振 — 荒 魂 化',
+    `${d.youkaiName}の魂を振り起こした。\n\n荒魂は周囲の祓い手の封印を妨げ、陰陽師の結界を乱す。\n\n有効期限：${expStr} まで\n\n（術力 -20）`,
   );
-  _renderNearbyMonyou();
+  aragamiSet.add(youkaiId);
+  // 地図マーカーを更新
+  const marker = youkaiMarkers[youkaiId];
+  if (marker) refreshMarker(youkaiId);
+  if (_activeSkillId) openCollection(_activeSkillId);
 }
 
-async function _renderNearbyMonyou() {
-  if (!state.playerPos) return;
-  const { lat, lon } = state.playerPos;
-  const data = await apiGet(`/skill/monyou/nearby?lat=${lat}&lon=${lon}&r=500`).catch(() => null);
-  if (!data?.patterns?.length) return;
-  data.patterns.forEach((p) => {
-    L.circleMarker([p.lat, p.lon], {
-      radius: 6,
-      color: '#8b2fc9',
-      fillColor: '#c87ef0',
-      fillOpacity: 0.6,
-      weight: 1,
-    }).bindTooltip(`紋〔${p.author}〕`, { permanent: false }).addTo(map);
+// ---- 荒魂データ読み込み & 地図マーカー更新 ------------------
+let aragamiSet = new Set();
+
+// ---- おみくじ (神子: 1日1回) ----------------------------------
+const OMIKUJI_LABELS = {
+  daikyo:   { kanji: '大凶', color: '#8b0000', desc: '解除した妖怪一体が封印前に戻った……' },
+  kyo:      { kanji: '凶',   color: '#c8302a', desc: '術力が20失われた。' },
+  kichi:    { kanji: '吉',   color: '#b8860b', desc: '術力が20回復した。' },
+  chukichi: { kanji: '中吉', color: '#3a8f5a', desc: '1時間、封印の試行回数が1減る。' },
+  daikichi: { kanji: '大吉', color: '#c0a030', desc: '神意により、妖怪一体が解き放たれた……' },
+};
+
+async function activateOmikuji() {
+  if (currentRole !== 'miko') return;
+  showToast('神意を問う…');
+  const res = await apiPost('/skill/omikuji', { deviceId: DEVICE_ID });
+  if (!res.ok) {
+    if (res.status === 429) {
+      const next = res.data?.next_available
+        ? new Date(res.data.next_available).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+        : '明日';
+      showToast(`おみくじは${next}まで引けない`);
+    } else {
+      showToast(`おみくじ失敗: ${res.data?.error ?? 'エラー'}`);
+    }
+    return;
+  }
+
+  const d = res.data;
+  const label = OMIKUJI_LABELS[d.result] ?? { kanji: '？', color: '#888', desc: '' };
+
+  let detail = label.desc;
+  if (d.result === 'kyo' || d.result === 'kichi') {
+    const sign = d.jutsu_delta > 0 ? '+' : '';
+    detail += `\n術力: ${sign}${d.jutsu_delta}（現在: ${d.jutsuriyoku}/${d.jutsuriyoku_max}）`;
+    _jutsu.current = d.jutsuriyoku;
+    _jutsu.max     = d.jutsuriyoku_max;
+    _renderJutsuHUD();
+  } else if (d.result === 'chukichi') {
+    const until = new Date(d.bonus_until).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    detail += `\n有効期限: ${until} まで`;
+  } else if ((d.result === 'daikyo' || d.result === 'daikichi') && d.affected_youkai_id) {
+    // 影響を受けた妖怪のマーカーを更新
+    const item = youkaiMarkers[d.affected_youkai_id];
+    if (item) {
+      if (d.result === 'daikyo') {
+        capturedIds.set(d.affected_youkai_id, 'seal');
+      } else {
+        capturedIds.set(d.affected_youkai_id, 'release');
+      }
+      refreshMarker(d.affected_youkai_id);
+    }
+    // コレクション上の状態も反映
+    if (d.result === 'daikyo') {
+      capturedIds.set(d.affected_youkai_id, 'seal');
+    } else {
+      capturedIds.set(d.affected_youkai_id, 'release');
+    }
+  }
+
+  // 結果表示（タイトルを引いたくじのスタイルに）
+  const titleEl = document.getElementById('skill-result-title');
+  titleEl.style.color = label.color;
+  titleEl.style.fontSize = '28px';
+  titleEl.style.letterSpacing = '0.3em';
+  showSkillResult(label.kanji, detail);
+  // 次回のcloseでスタイルをリセット
+  const orig = closeSkillResult;
+  closeSkillResult = function() {
+    titleEl.style.color = '';
+    titleEl.style.fontSize = '';
+    titleEl.style.letterSpacing = '';
+    closeSkillResult = orig;
+    orig();
+  };
+}
+
+async function _loadAragami() {
+  const data = await apiGet('/skill/aragami').catch(() => null);
+  if (!data?.aragami) return;
+  aragamiSet = new Set(data.aragami.map((a) => a.youkaiId));
+  // 未封印妖怪のマーカーを再描画して荒魂表示を反映
+  aragamiSet.forEach((id) => {
+    if (!capturedIds.has(id)) refreshMarker(id);
   });
 }
 
@@ -1987,6 +2126,12 @@ openCollection = function(skillId = null) {
     } else if (skillId === 'utsushidori' && actionType === 'bond' && job === 'jujutsushi') {
       skillBtn = `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px"
         onclick="event.stopPropagation();openUtsushidoriPicker('${y.id}')">力を写し取る</button>`;
+    } else if (skillId === 'tamafuri' && actionType === 'release' && job === 'jujutsushi') {
+      const alreadyAragami = aragamiSet.has(y.id);
+      skillBtn = alreadyAragami
+        ? `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px" disabled>荒魂化済</button>`
+        : `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px"
+            onclick="event.stopPropagation();activateTamafuri('${y.id}')">魂を振る</button>`;
     }
 
     // bond 未解明は名前を隠す
@@ -1994,7 +2139,9 @@ openCollection = function(skillId = null) {
     const displayName  = nameRevealed ? y.name : '？？？';
     const statusBadge  = actionType === 'bond'
       ? `<div class="ck-status-badge bond">${trueNameLearned.has(y.id) ? '真名解明' : '契約済'}</div>`
-      : actionType === 'seal' ? '<div class="ck-status-badge seal">封印済</div>' : '';
+      : actionType === 'seal'    ? '<div class="ck-status-badge seal">封印済</div>'
+      : actionType === 'release' ? `<div class="ck-status-badge" style="background:#555;color:#ccc;">解除済${aragamiSet.has(y.id) ? '・荒魂' : ''}</div>`
+      : '';
 
     html += `
       <div class="collection-card" ${!skillId ? `onclick="closeCollectionAndDetail('${y.id}')"` : ''}>
@@ -2008,7 +2155,7 @@ openCollection = function(skillId = null) {
   html += '</div>';
   if (skillId) {
     const revealSkillName = currentRole && (SKILL_DEFS[currentRole] ?? []).find((s) => s.id === 'reveal')?.name;
-    const SKILL_NAMES = { shikigami:'式神術', reveal: revealSkillName || '真名解明', utsushidori:'写し取り' };
+    const SKILL_NAMES = { shikigami:'式神術', reveal: revealSkillName || '真名解明', utsushidori:'写し取り', tamafuri:'魂振', chinkon:'鎮魂術', omikuji:'おみくじ' };
     html = `<div style="font-family:'Shippori Mincho B1',serif;font-size:13px;letter-spacing:0.15em;color:var(--gold);text-align:center;margin-bottom:12px;">
       ${SKILL_NAMES[skillId] || ''} — 対象を選べ</div>` + html;
   }
@@ -2187,6 +2334,93 @@ async function _launchHishoTo(youkaiId) {
   });
   _renderHisho();
   _startHishoTimer();
+}
+
+// ---- 山伏: 石積み ------------------------------------------
+let _yamabushiStoneLayers = [];
+
+async function _loadYamabushiStones() {
+  const data = await apiGet('/skill/yamabushi/stones').catch(() => null);
+  if (!data) return;
+
+  _yamabushiStoneLayers.forEach((l) => map.removeLayer(l));
+  _yamabushiStoneLayers = [];
+
+  // 座標ごとにスタック数を集計
+  const posMap = new Map();
+  for (const s of (data.stones ?? [])) {
+    const key = `${s.lat.toFixed(5)},${s.lon.toFixed(5)}`;
+    if (!posMap.has(key)) posMap.set(key, { lat: s.lat, lon: s.lon, count: 0 });
+    posMap.get(key).count += 1;
+  }
+
+  posMap.forEach(({ lat, lon, count }) => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="yamabushi-stone-marker">${count > 1 ? count : '石'}</div>`,
+      iconSize:   [28, 28],
+      iconAnchor: [14, 28],
+    });
+    const layer = L.marker([lat, lon], { icon, zIndexOffset: -100 });
+    layer.addTo(map);
+    _yamabushiStoneLayers.push(layer);
+  });
+}
+
+async function activateYamabushiStone() {
+  if (!state.playerPos) { showToast('現在地が取得できません'); return; }
+  showToast('石を積んでいます…');
+  const res = await apiPost('/skill/yamabushi/stone', {
+    deviceId: DEVICE_ID,
+    userLat:  state.playerPos.lat,
+    userLon:  state.playerPos.lon,
+  });
+  if (!res.ok) {
+    if (res.status === 402) {
+      const cur = res.data?.current ?? 0;
+      showToast(`術力不足（${cur}/5）— 回復後に試みよ`);
+      _jutsu.current = cur;
+      _renderJutsuHUD();
+    } else {
+      showToast('石積み失敗: ' + (res.data?.error ?? 'エラー'));
+    }
+    return;
+  }
+  _jutsu.current = res.data.jutsuriyoku;
+  _jutsu.max     = res.data.jutsuriyoku_max;
+  _renderJutsuHUD();
+  showToast(`石を積みました。術力残: ${res.data.jutsuriyoku}`);
+  await _loadYamabushiStones();
+}
+
+// ---- 山伏: 踏破視覚化 --------------------------------------
+async function activateYamabushiTraversal() {
+  if (currentRole !== 'yamabushi') return;
+  showToast('踏破率を計算中…');
+  const res = await apiGet(`/skill/yamabushi/traversal?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
+  if (!res) { showToast('踏破視覚化に失敗しました'); return; }
+
+  const { regions, overall_pct, bonus } = res;
+
+  let rows = '';
+  for (const r of regions) {
+    const bar = '■'.repeat(Math.round(r.rate_pct / 10)) + '□'.repeat(10 - Math.round(r.rate_pct / 10));
+    rows += `<div class="traversal-row">
+      <span class="traversal-region">${r.name}</span>
+      <span class="traversal-bar">${bar}</span>
+      <span class="traversal-pct">${r.rate_pct}%</span>
+      <span class="traversal-count">${r.sealed}/${r.total}</span>
+    </div>`;
+  }
+
+  const bonusLine = `踏破率 ${overall_pct}% → 封印ボーナス -${bonus}`;
+
+  const overlay = document.getElementById('skill-result-overlay');
+  document.getElementById('skill-result-title').textContent = '踏 破 視 覚 化';
+  document.getElementById('skill-result-body').innerHTML =
+    `<div style="text-align:center;margin-bottom:10px;color:var(--gold);font-size:13px;">${bonusLine}</div>` +
+    `<div class="traversal-list">${rows}</div>`;
+  overlay.style.display = 'flex';
 }
 
 // 全 const/関数が定義された後でスキルUIを初期化

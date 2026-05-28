@@ -1,11 +1,11 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, KEKKAI_BARRIERS_TABLE } from '../lib/dynamodb';
+import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, KEKKAI_BARRIERS_TABLE, ARAGAMI_TABLE } from '../lib/dynamodb';
 import { isInsideAnyBarrier } from '../lib/geometry';
 import { distanceMeters } from '../lib/distance';
 import { deductJutsu } from '../lib/jutsuriyoku';
 import type { YokaiDBItem } from '../types/youkai';
-import { YOURYOKU_RANKS, JUTSU_COST } from '../types/skill';
+import { YOURYOKU_RANKS, JUTSU_COST, rankBeatsYouryoku } from '../types/skill';
 
 const CAPTURE_RADIUS_M = 13;
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
@@ -20,6 +20,7 @@ interface CaptureRequest {
   userLon:    number;
   actionType?: ActionType;
   faction?:   Faction;
+  job?:       string;
   rallyKey?:  string;
   qrCode?:    string;
 }
@@ -114,7 +115,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     };
     if (body.rallyKey) bondItem.rally_key = body.rallyKey;
     await ddb.send(new PutCommand({ TableName: CAPTURES_TABLE, Item: bondItem }));
-    updatePlayerProfile(deviceId, faction, rankInfo.exp).catch(e => console.error('profile update failed', e));
+    updatePlayerProfile(deviceId, faction, rankInfo.exp, body.job).catch(e => console.error('profile update failed', e));
     return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
       success: true, sealed: true, actionType: 'bond', youryoku,
       rank_name: rankInfo.name, exp_gained: rankInfo.exp,
@@ -132,18 +133,59 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const prevProg  = (existing?.seal_progress as number | undefined) ?? 0;
   const now       = new Date().toISOString();
 
-  // 結界ボーナス: 自分の有効な結界内に妖怪がいれば試行回数-1
-  const barriersRes = await ddb.send(new QueryCommand({
-    TableName: KEKKAI_BARRIERS_TABLE,
-    KeyConditionExpression: 'deviceId = :d',
-    ExpressionAttributeValues: { ':d': deviceId },
-    ProjectionExpression: 'lats, lons, expires_at',
-  }));
-  const kekkaiBonus = isInsideAnyBarrier(
-    youkai.latitude, youkai.longitude,
-    (barriersRes.Items ?? []) as Array<{ lats: number[]; lons: number[]; expires_at: string }>,
+  // 結界ボーナス・荒魂チェックを並列取得
+  const [barriersRes, playerRes, aragamiRes] = await Promise.all([
+    ddb.send(new QueryCommand({
+      TableName: KEKKAI_BARRIERS_TABLE,
+      KeyConditionExpression: 'deviceId = :d',
+      ExpressionAttributeValues: { ':d': deviceId },
+      ProjectionExpression: 'lats, lons, expires_at',
+    })),
+    ddb.send(new GetCommand({
+      TableName: PLAYER_PROFILE_TABLE,
+      Key: { deviceId },
+      ProjectionExpression: '#r, omikuji_chukichi_until, #j, yamabushi_traversal_bonus',
+      ExpressionAttributeNames: { '#r': 'rank', '#j': 'job' },
+    })),
+    ddb.send(new GetCommand({
+      TableName: ARAGAMI_TABLE,
+      Key: { youkaiId },
+      ProjectionExpression: 'youryoku, expires_at',
+    })),
+  ]);
+
+  const barriers              = (barriersRes.Items ?? []) as Array<{ lats: number[]; lons: number[]; expires_at: string }>;
+  const playerRank            = (playerRes.Item?.rank as string | undefined) ?? 'C';
+  const playerJob             = (playerRes.Item?.job as string | undefined) ?? '';
+  const yamabushiBonus        = playerJob === 'yamabushi'
+    ? ((playerRes.Item?.yamabushi_traversal_bonus as number | undefined) ?? 0)
+    : 0;
+  const aragamiItem = aragamiRes.Item;
+  const isAragami   = !!(aragamiItem && (aragamiItem.expires_at as string) > now);
+  const aragamiYouryoku = isAragami ? (aragamiItem!.youryoku as number) : 0;
+
+  // 和魂印ボーナス: 神子が鎮魂術を使った妖怪は封印試行回数-1
+  const nigitamaBonus = !!(existing?.nigitama_at);
+
+  // 中吉ボーナス: おみくじ中吉が有効期間内なら試行回数-1
+  const chukichiUntil = playerRes.Item?.omikuji_chukichi_until as string | undefined;
+  const chukichiBonus = !!(chukichiUntil && chukichiUntil > now);
+
+  // 結界ボーナス判定
+  // 荒魂化された妖怪が結界内にいる場合は結界無効（ただし陰陽師ランクが妖力より高ければ有効）
+  const insideBarrier = isInsideAnyBarrier(youkai.latitude, youkai.longitude, barriers);
+  const kekkaiBonus = insideBarrier && (!isAragami || rankBeatsYouryoku(playerRank, aragamiYouryoku));
+
+  // 荒魂デバフ: 封印試行回数+1
+  const aragamiPenalty = isAragami ? 1 : 0;
+  const required = Math.max(1,
+    rankInfo.trials
+    - (kekkaiBonus   ? 1 : 0)
+    - (nigitamaBonus ? 1 : 0)
+    - (chukichiBonus ? 1 : 0)
+    - yamabushiBonus
+    + aragamiPenalty
   );
-  const required = Math.max(1, rankInfo.trials - (kekkaiBonus ? 1 : 0));
 
   const newProg = prevProg + 1;
 
@@ -160,11 +202,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }));
     return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
       success: true, sealed: false, progress: newProg, required, youryoku,
-      rank_name: rankInfo.name, kekkai_bonus: kekkaiBonus,
+      rank_name: rankInfo.name,
+      kekkai_bonus: kekkaiBonus, nigitama_bonus: nigitamaBonus,
+      chukichi_bonus: chukichiBonus, aragami_debuff: isAragami,
+      yamabushi_bonus: yamabushiBonus > 0 ? yamabushiBonus : undefined,
     })};
   }
 
-  // 封印完了
+  // 封印完了 — 和魂印をクリア
   const sealItem: Record<string, unknown> = {
     deviceId, youkaiId, actionType: 'seal', faction,
     capturedAt: now, userLat, userLon,
@@ -173,11 +218,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (body.rallyKey) sealItem.rally_key = body.rallyKey;
 
   await ddb.send(new PutCommand({ TableName: CAPTURES_TABLE, Item: sealItem }));
-  updatePlayerProfile(deviceId, faction, rankInfo.exp).catch(e => console.error('profile update failed', e));
+  updatePlayerProfile(deviceId, faction, rankInfo.exp, body.job).catch(e => console.error('profile update failed', e));
 
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
     success: true, sealed: true, progress: required, required, youryoku,
-    rank_name: rankInfo.name, exp_gained: rankInfo.exp, kekkai_bonus: kekkaiBonus,
+    rank_name: rankInfo.name, exp_gained: rankInfo.exp,
+    kekkai_bonus: kekkaiBonus, nigitama_bonus: nigitamaBonus,
+    chukichi_bonus: chukichiBonus, aragami_debuff: isAragami,
+    yamabushi_bonus: yamabushiBonus > 0 ? yamabushiBonus : undefined,
   })};
 };
 
@@ -188,8 +236,8 @@ function computeRank(exp: number): string {
   return 'C';
 }
 
-async function updatePlayerProfile(deviceId: string, faction: Faction, expGain: number) {
-  const job = faction === 'supernatural' ? 'jujutsushi' : 'onmyoji';
+async function updatePlayerProfile(deviceId: string, faction: Faction, expGain: number, jobOverride?: string) {
+  const job = jobOverride ?? (faction === 'supernatural' ? 'jujutsushi' : 'onmyoji');
   const res = await ddb.send(new UpdateCommand({
     TableName: PLAYER_PROFILE_TABLE,
     Key: { deviceId },

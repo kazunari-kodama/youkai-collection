@@ -29,10 +29,11 @@ Globals:
         CORE_TABLE: !Ref YoukaiCoreTable
         IMAGES_BUCKET: youkai-collection-images
         PLAYER_PROFILE_TABLE: !Ref PlayerProfileTable
-        PATTERNS_TABLE: !Ref PatternsTable
+        ARAGAMI_TABLE: !Ref AragamiTable
         FLYING_SHIKIGAMI_TABLE: !Ref FlyingShikigamiTable
-        KEKKAI_STONES_TABLE:   !Ref KekkaiStonesTable
-        KEKKAI_BARRIERS_TABLE: !Ref KekkaiBarriersTable
+        KEKKAI_STONES_TABLE:    !Ref KekkaiStonesTable
+        KEKKAI_BARRIERS_TABLE:  !Ref KekkaiBarriersTable
+        YAMABUSHI_STONES_TABLE: !Ref YamabushiStonesTable
 
 Resources:
   # API Gateway
@@ -255,36 +256,42 @@ Resources:
             NonKeyAttributes:
               - actionType
 
-  # Patterns Table (呪術師 紋様術)
-  PatternsTable:
+  # Aragami Table (呪術師 魂振)
+  AragamiTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      TableName: youkai-patterns
+      TableName: youkai-aragami
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: pattern_id
-          AttributeType: S
-        - AttributeName: deviceId
-          AttributeType: S
-        - AttributeName: expires_at
+        - AttributeName: youkaiId
           AttributeType: S
       KeySchema:
-        - AttributeName: pattern_id
+        - AttributeName: youkaiId
           KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: deviceId-expires_at-index
-          KeySchema:
-            - AttributeName: deviceId
-              KeyType: HASH
-            - AttributeName: expires_at
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
+
+  # YamabushiStones Table (山伏: 石積み)
+  YamabushiStonesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-yamabushi-stones
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: stone_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+        - AttributeName: stone_id
+          KeyType: RANGE
 
   # Player Profile Table
   PlayerProfileTable:
@@ -392,6 +399,10 @@ Resources:
               Action:
                 - dynamodb:Query
               Resource: !GetAtt KekkaiBarriersTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt AragamiTable.Arn
       Events:
         Api:
           Type: Api
@@ -1176,8 +1187,8 @@ Resources:
             Path: /skill/kotodama
             Method: POST
 
-  # Lambda: POST /skill/monyou (呪術師: 紋様術)
-  SkillMonyouFunction:
+  # Lambda: POST /skill/tamafuri (呪術師: 魂振)
+  SkillTamafuriFunction:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: esbuild
@@ -1186,33 +1197,124 @@ Resources:
         Target: es2022
         Sourcemap: false
         EntryPoints:
-          - src/handlers/skillMonyou.ts
+          - src/handlers/skillTamafuri.ts
     Properties:
       CodeUri: ../backend/
-      Handler: src/handlers/skillMonyou.handler
+      Handler: src/handlers/skillTamafuri.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem]
+              Resource: !GetAtt AragamiTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/tamafuri
+            Method: POST
+
+  # Lambda: GET /skill/aragami (全員: 荒魂一覧)
+  SkillAragamiListFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillAragamiList.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillAragamiList.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !GetAtt AragamiTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/aragami
+            Method: GET
+
+  # Lambda: POST /skill/omikuji (神子: おみくじ)
+  SkillOmikujiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillOmikuji.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillOmikuji.handler
       Policies:
         - Statement:
             - Effect: Allow
               Action: [dynamodb:GetItem, dynamodb:UpdateItem]
               Resource: !GetAtt PlayerProfileTable.Arn
             - Effect: Allow
-              Action: [dynamodb:PutItem, dynamodb:Query, dynamodb:Scan]
-              Resource:
-                - !GetAtt PatternsTable.Arn
-                - !Sub '${PatternsTable.Arn}/index/*'
+              Action: [dynamodb:Query, dynamodb:PutItem]
+              Resource: !GetAtt CapturesTable.Arn
       Events:
         Api:
           Type: Api
           Properties:
             RestApiId: !Ref YokaiApi
-            Path: /skill/monyou
+            Path: /skill/omikuji
             Method: POST
-        ApiNearby:
+
+  # Lambda: POST /skill/chinkon (神子: 鎮魂術)
+  SkillChinkonFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillChinkon.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillChinkon.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:DeleteItem]
+              Resource: !GetAtt AragamiTable.Arn
+      Events:
+        Api:
           Type: Api
           Properties:
             RestApiId: !Ref YokaiApi
-            Path: /skill/monyou/nearby
-            Method: GET
+            Path: /skill/chinkon
+            Method: POST
 
   # Lambda: POST /skill/reveal (全ロール: 真名解明)
   SkillRevealFunction:
@@ -1497,6 +1599,96 @@ Resources:
           Properties:
             RestApiId: !Ref YokaiApi
             Path: /skill/kekkai/stones
+            Method: GET
+
+  # Lambda: GET /skill/yamabushi/traversal (山伏: 踏破視覚化)
+  SkillYamabushiTraversalFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillYamabushiTraversal.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYamabushiTraversal.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yamabushi/traversal
+            Method: GET
+
+  # Lambda: POST /skill/yamabushi/stone (山伏: 石積み)
+  SkillYamabushiPlaceStoneFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillYamabushiPlaceStone.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYamabushiPlaceStone.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:PutItem]
+              Resource: !GetAtt YamabushiStonesTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yamabushi/stone
+            Method: POST
+
+  # Lambda: GET /skill/yamabushi/stones (全員: 石一覧)
+  SkillYamabushiStonesFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillYamabushiStones.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYamabushiStones.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !GetAtt YamabushiStonesTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yamabushi/stones
             Method: GET
 
 Outputs:

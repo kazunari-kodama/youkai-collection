@@ -1,4 +1,4 @@
-export type JobId = 'onmyoji' | 'jujutsushi';
+export type JobId = 'onmyoji' | 'jujutsushi' | 'miko' | 'yamabushi' | 'kitoshi' | 'yojutsushi';
 
 export type SkillId =
   | 'dokaishu'        // 陰陽師: 読解術
@@ -6,22 +6,32 @@ export type SkillId =
   | 'kekkai'          // 陰陽師: 結界術
   | 'hisho_shikigami' // 陰陽師: 飛翔式神
   | 'kotodama'        // 呪術師: 言霊術
-  | 'monyou'          // 呪術師: 紋様術
-  | 'utsushidori';    // 呪術師: 写し取り
+  | 'tamafuri'        // 呪術師: 魂振
+  | 'utsushidori'     // 呪術師: 写し取り
+  | 'chinkon'         // 神子: 鎮魂術
+  | 'omikuji'         // 神子: おみくじ
+  | 'yamabushi_traversal' // 山伏: 踏破視覚化
+  | 'yamabushi_stone';    // 山伏: 石積み
 
-export const JOB_SKILLS: Record<JobId, SkillId[]> = {
+export const JOB_SKILLS: Partial<Record<JobId, SkillId[]>> = {
   onmyoji:    ['dokaishu', 'shikigami', 'kekkai', 'hisho_shikigami'],
-  jujutsushi: ['kotodama', 'monyou',   'utsushidori'],
+  jujutsushi: ['kotodama', 'tamafuri', 'utsushidori'],
+  miko:       ['chinkon', 'omikuji'],
+  yamabushi:  ['yamabushi_traversal', 'yamabushi_stone'],
 };
 
 export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: number }> = {
-  dokaishu:        { name: '読解術',   desc: '未封印の妖の正体・属性を読み解く（50m圏内）', rangeM: 50 },
-  shikigami:       { name: '式神術',   desc: '封印した妖怪を式神化し、使役する' },
-  kekkai:          { name: '結界術',   desc: '3体以上の封印位置で結界を形成する' },
-  hisho_shikigami: { name: '飛翔式神', desc: '術力を消費して式神を遠隔地へ飛ばし、妖怪を封じる' },
-  kotodama:        { name: '言霊術',   desc: '契約した妖怪の真名を解き明かす' },
-  monyou:          { name: '紋様術',   desc: '現在地に紋様を刻む（24時間有効、1日1回）' },
-  utsushidori:     { name: '写し取り', desc: '契約した妖怪の力を己の内に写し取る' },
+  dokaishu:           { name: '読解術',     desc: '未封印の妖の正体・属性を読み解く（50m圏内）', rangeM: 50 },
+  shikigami:          { name: '式神術',     desc: '封印した妖怪を式神化し、使役する' },
+  kekkai:             { name: '結界術',     desc: '3体以上の封印位置で結界を形成する' },
+  hisho_shikigami:    { name: '飛翔式神',   desc: '術力を消費して式神を遠隔地へ飛ばし、妖怪を封じる' },
+  kotodama:           { name: '言霊術',     desc: '契約した妖怪の真名を解き明かす' },
+  tamafuri:           { name: '魂振',       desc: '解除した妖怪を荒魂化し、周囲の封印を乱す' },
+  utsushidori:        { name: '写し取り',   desc: '契約した妖怪の力を己の内に写し取る' },
+  chinkon:            { name: '鎮魂術',     desc: '荒魂化した妖怪を鎮め和魂へと変容させる', rangeM: 13 },
+  omikuji:            { name: 'おみくじ',   desc: '神意を問い、術力や妖怪の状態に影響を与える' },
+  yamabushi_traversal:{ name: '踏破視覚化', desc: '各地域の妖怪踏破率を確認し封印ボーナスを更新する' },
+  yamabushi_stone:    { name: '石積み',     desc: '術力を消費して現在地に石を積む。踏破の目印となる', rangeM: 0 },
 };
 
 export const RANK_SHIKIGAMI_SLOTS: Record<string, number> = {
@@ -29,9 +39,8 @@ export const RANK_SHIKIGAMI_SLOTS: Record<string, number> = {
 };
 
 export const MAX_COPIED_POWERS = 3;
-export const MONYOU_DAILY_LIMIT = 1;
-export const MONYOU_MAX_ACTIVE  = 5;
-export const MONYOU_TTL_HOURS   = 24;
+
+export const ARAGAMI_TTL_HOURS = 72;
 
 // ---- 妖力ランク定義 ----
 export const YOURYOKU_RANKS: Record<number, { name: string; trials: number; exp: number }> = {
@@ -63,8 +72,10 @@ export const JUTSU_COST = {
   skill_hisho_shikigami:   15,
   skill_kekkai_stone:      10,
   skill_kotodama:          15,
-  skill_monyou:            25,
+  skill_tamafuri:          20,
+  skill_chinkon:           15,
   skill_utsushidori:       20,
+  skill_yamabushi_stone:    5,
 } as const;
 
 export const RANK_JUTSU_MAX: Record<string, number> = {
@@ -134,12 +145,28 @@ export interface KekkaiBarrierDBItem {
   ttl:        number;
 }
 
-/** PatternsTable の1レコード */
-export interface PatternDBItem {
-  pattern_id: string;
-  deviceId:   string;
-  lat:        number;
-  lon:        number;
-  created_at: string;
-  expires_at: string;
+/** AragamiTable の1レコード */
+export interface AragamiDBItem {
+  youkaiId:      string;
+  activated_by:  string;
+  activated_at:  string;
+  youryoku:      number;
+  expires_at:    string;
+  ttl:           number;
+}
+
+/** youryoku (1–5) をプレイヤーランクの序列値に変換 */
+export const YOURYOKU_RANK_ORDER = [0, 0, 1, 2, 3, 4] as const;
+
+/** プレイヤーランクの序列値 */
+export const RANK_ORDER: Record<string, number> = { C: 0, B: 1, A: 2, S: 3, SS: 4 };
+
+/** プレイヤーランクが荒魂の妖力より厳密に高いか判定（結界術の無効化免除用） */
+export function rankBeatsYouryoku(rank: string, youryoku: number): boolean {
+  return (RANK_ORDER[rank] ?? 0) > (YOURYOKU_RANK_ORDER[youryoku] ?? 0);
+}
+
+/** プレイヤーランクが妖力と同等以上か判定（鎮魂術の発動条件） */
+export function rankMeetsYouryoku(rank: string, youryoku: number): boolean {
+  return (RANK_ORDER[rank] ?? 0) >= (YOURYOKU_RANK_ORDER[youryoku] ?? 0);
 }

@@ -15,6 +15,7 @@ export interface JutsuProfile {
   distance_walked_m: number;
   distance_at_last_jutsu_update: number;
   rank: string;
+  job?: string;
 }
 
 /** ランクから術力最大値を返す */
@@ -31,10 +32,11 @@ export function calcCurrentJutsu(profile: Partial<JutsuProfile>): number {
   const distNow  = profile.distance_walked_m ?? 0;
   const distLast = profile.distance_at_last_jutsu_update ?? distNow;
 
+  const multiplier    = profile.job === 'yamabushi' ? 1.5 : 1;
   const elapsedMin    = (Date.now() - lastAt) / 60_000;
   const distSince     = Math.max(0, distNow - distLast);
-  const timeRecovery  = Math.floor(elapsedMin * JUTSU_RECOVERY_PER_MIN);
-  const distRecovery  = Math.floor(distSince / 50) * JUTSU_RECOVERY_PER_50M;
+  const timeRecovery  = Math.floor(elapsedMin * JUTSU_RECOVERY_PER_MIN * multiplier);
+  const distRecovery  = Math.floor((distSince / 50) * JUTSU_RECOVERY_PER_50M * multiplier);
 
   return Math.min(max, stored + timeRecovery + distRecovery);
 }
