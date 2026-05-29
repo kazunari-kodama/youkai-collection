@@ -161,6 +161,16 @@ async function apiPost(path, body) {
   return { ok: res.ok, status: res.status, data: await res.json() };
 }
 
+async function apiPut(path, body) {
+  const payload = state.debugMode ? { ...body, debug: true } : body;
+  const res = await fetch(API_BASE_URL + path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return { ok: res.ok, status: res.status, data: await res.json() };
+}
+
 // --- Initial data load --------------------------------------
 async function loadData() {
   setStatus('データを読み込み中…');
@@ -1193,7 +1203,7 @@ function _syncJobToBackend(role, faction) {
   };
   const job = JOB_MAP[role];
   if (!job) return;
-  apiPost('/player/job', { deviceId: DEVICE_ID, job, faction }).catch(() => {});
+  apiPut('/player/job', { deviceId: DEVICE_ID, job, faction }).catch(() => {});
 }
 
 function confirmRole() {
