@@ -42,7 +42,7 @@ Resources:
     Properties:
       StageName: prod
       Cors:
-        AllowMethods: "'GET,POST,PATCH,DELETE,OPTIONS'"
+        AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Admin-Key,X-System-Key,Authorization'"
         AllowOrigin: "'*'"
       Auth:
