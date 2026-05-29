@@ -2442,7 +2442,7 @@ async function _loadYamabushiStones() {
         <div style="margin-top:4px;">${action}</div>
       </div>`;
     }).join('');
-    const popupHtml = `<div style="min-width:150px;max-width:220px;"><b style="font-size:12px;">石積み × ${count}</b>${rows}</div>`;
+    const popupHtml = `<div style="min-width:150px;max-width:220px;">${rows}</div>`;
 
     const layer = L.marker([lat, lon], { icon, zIndexOffset: -100 }).bindPopup(popupHtml);
     layer.addTo(map);
