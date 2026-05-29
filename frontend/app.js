@@ -1186,12 +1186,23 @@ function _rqCalcResult() {
   _rqShow('rq-result');
 }
 
+function _syncJobToBackend(role, faction) {
+  const JOB_MAP = {
+    onmyoji: 'onmyoji', kitoshi: 'kitoshi', miko: 'miko',
+    yojutsushi: 'yojutsushi', yamabushi: 'yamabushi', jujutsushi: 'jujutsushi',
+  };
+  const job = JOB_MAP[role];
+  if (!job) return;
+  apiPost('/player/job', { deviceId: DEVICE_ID, job, faction }).catch(() => {});
+}
+
 function confirmRole() {
   const { role, faction } = _quiz.result;
   currentRole    = role;
   currentFaction = faction;
   localStorage.setItem(ROLE_KEY,    role);
   localStorage.setItem(FACTION_KEY, faction);
+  _syncJobToBackend(role, faction);
   document.getElementById('role-quiz-modal').classList.remove('show');
   updateFactionHUD();
   _initSkillUI();
@@ -1280,6 +1291,7 @@ function setRoleDebug(role) {
   currentFaction = info.faction;
   localStorage.setItem(ROLE_KEY,    role);
   localStorage.setItem(FACTION_KEY, info.faction);
+  _syncJobToBackend(role, info.faction);
   document.getElementById('debug-role-panel').classList.remove('show');
   updateFactionHUD();
   _initSkillUI();

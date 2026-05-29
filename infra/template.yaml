@@ -497,6 +497,34 @@ Resources:
             Path: /player/profile
             Method: GET
 
+  # Lambda: PUT /player/job (ロール同期 — localStorage⇔DynamoDB一致を保つ)
+  PlayerSetJobFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/playerSetJob.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/playerSetJob.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /player/job
+            Method: PUT
+
   # Lambda: POST /player/walk
   PlayerWalkFunction:
     Type: AWS::Serverless::Function
