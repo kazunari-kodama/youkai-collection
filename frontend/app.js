@@ -2417,13 +2417,33 @@ async function _loadYamabushiStones() {
     });
 
     const rows = stones.map((s) => {
-      const uid = s.deviceId ? _escapeHtml(s.deviceId.slice(0, 8)) + '…' : '?';
-      const msg = s.message
-        ? `<div style="color:#444;margin-top:2px;">${_escapeHtml(s.message)}</div>`
-        : '';
-      return `<div style="margin:4px 0;font-size:11px;border-bottom:1px solid #eee;padding-bottom:4px;"><span style="color:#888;">${uid}</span>${msg}</div>`;
+      const uid   = s.deviceId ? _escapeHtml(s.deviceId.slice(0, 8)) + '…' : '?';
+      const msg   = s.message ? `<div style="color:#444;margin-top:2px;">${_escapeHtml(s.message)}</div>` : '';
+      const liked = Array.isArray(s.liked_by) ? s.liked_by : [];
+      const likeCount = liked.length;
+      const isOwn     = s.deviceId === DEVICE_ID;
+      const hasLiked  = liked.includes(DEVICE_ID);
+      const oid = s.deviceId.replace(/'/g, '');
+      const sid = s.stone_id.replace(/'/g, '');
+
+      let action;
+      if (isOwn) {
+        action = `<button onclick="deleteYamabushiStone('${oid}','${sid}')"
+          style="font-size:10px;padding:2px 6px;cursor:pointer;color:#c44;border:1px solid #c44;background:none;border-radius:3px;">削除</button>`;
+      } else {
+        const heart = hasLiked ? '♥' : '♡';
+        const nextAction = hasLiked ? 'unlike' : 'like';
+        const col = hasLiked ? '#e44' : '#aaa';
+        action = `<button onclick="likeYamabushiStone('${oid}','${sid}','${nextAction}')"
+          style="font-size:11px;padding:2px 8px;cursor:pointer;color:${col};border:1px solid ${col};background:none;border-radius:3px;">${heart} ${likeCount}</button>`;
+      }
+
+      return `<div style="margin:5px 0;font-size:11px;padding:5px 6px;border:1px solid #eee;border-radius:4px;">
+        <span style="color:#888;font-size:10px;">${uid}</span>${msg}
+        <div style="margin-top:4px;">${action}</div>
+      </div>`;
     }).join('');
-    const popupHtml = `<div style="min-width:130px;max-width:200px;"><b style="font-size:12px;">石積み × ${count}</b>${rows}</div>`;
+    const popupHtml = `<div style="min-width:150px;max-width:220px;"><b style="font-size:12px;">石積み × ${count}</b>${rows}</div>`;
 
     const layer = L.marker([lat, lon], { icon, zIndexOffset: -100 }).bindPopup(popupHtml);
     layer.addTo(map);
@@ -2456,6 +2476,34 @@ async function activateYamabushiStone() {
     showToast(`石を積みました。術力残: ${res.data.jutsuriyoku}`);
     await _loadYamabushiStones();
   });
+}
+
+async function likeYamabushiStone(ownerDeviceId, stoneId, action) {
+  const res = await apiPost('/skill/yamabushi/stone/like', {
+    deviceId:        DEVICE_ID,
+    owner_device_id: ownerDeviceId,
+    stone_id:        stoneId,
+    action,
+  });
+  if (!res.ok) {
+    showToast('いいね失敗: ' + (res.data?.error ?? 'エラー'));
+    return;
+  }
+  await _loadYamabushiStones();
+}
+
+async function deleteYamabushiStone(ownerDeviceId, stoneId) {
+  if (!confirm('この石を削除しますか？')) return;
+  const res = await apiPost('/skill/yamabushi/stone/delete', {
+    deviceId: DEVICE_ID,
+    stone_id: stoneId,
+  });
+  if (!res.ok) {
+    showToast('削除失敗: ' + (res.data?.error ?? 'エラー'));
+    return;
+  }
+  showToast('石を削除しました');
+  await _loadYamabushiStones();
 }
 
 // ---- 山伏: 踏破視覚化 --------------------------------------

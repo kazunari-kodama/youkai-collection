@@ -1692,6 +1692,60 @@ Resources:
             Path: /skill/yamabushi/stone
             Method: POST
 
+  # Lambda: POST /skill/yamabushi/stone/like (いいねトグル)
+  SkillYamabushiLikeStoneFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillYamabushiLikeStone.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYamabushiLikeStone.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt YamabushiStonesTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yamabushi/stone/like
+            Method: POST
+
+  # Lambda: POST /skill/yamabushi/stone/delete (自分の石を削除)
+  SkillYamabushiDeleteStoneFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillYamabushiDeleteStone.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYamabushiDeleteStone.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:DeleteItem]
+              Resource: !GetAtt YamabushiStonesTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yamabushi/stone/delete
+            Method: POST
+
   # Lambda: GET /skill/yamabushi/stones (全員: 石一覧)
   SkillYamabushiStonesFunction:
     Type: AWS::Serverless::Function
