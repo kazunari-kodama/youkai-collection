@@ -313,6 +313,21 @@
   </div>
 </div>
 
+<!-- Stone Message modal -->
+<div class="modal-overlay" id="stone-message-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeStoneMessageModal()">×</button>
+    <div class="modal-headline">石 に 言 葉 を 刻 む</div>
+    <div style="font-size:13px;color:#888;margin:10px 0 6px;">旅人への伝言（任意・50文字以内）</div>
+    <textarea id="stone-message-input" maxlength="50" rows="3"
+      style="width:100%;box-sizing:border-box;resize:none;font-family:inherit;font-size:14px;padding:8px;border:1px solid #ccc;border-radius:4px;"
+      placeholder="ここに言葉を刻む（省略可）"
+      oninput="document.getElementById('stone-message-count').textContent=this.value.length+' / 50'"></textarea>
+    <div id="stone-message-count" style="text-align:right;font-size:11px;color:#888;margin:2px 0 10px;">0 / 50</div>
+    <button class="skill-action-btn" onclick="confirmStoneMessage()">石 を 積 む</button>
+  </div>
+</div>
+
 <!-- Skill Result mini-modal -->
 <div class="skill-result-overlay" id="skill-result-overlay" style="display:none">
   <div class="skill-result-box" id="skill-result-box">

@@ -1814,6 +1814,34 @@ function closeSkillResult() {
   document.getElementById('skill-result-overlay').style.display = 'none';
 }
 
+// ---- 石メッセージ入力モーダル --------------------------------
+function _escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let _stoneMessageCallback = null;
+
+function openStoneMessageModal(callback) {
+  _stoneMessageCallback = callback;
+  const input = document.getElementById('stone-message-input');
+  input.value = '';
+  document.getElementById('stone-message-count').textContent = '0 / 50';
+  document.getElementById('stone-message-modal').classList.add('show');
+  setTimeout(() => input.focus(), 100);
+}
+
+function closeStoneMessageModal() {
+  document.getElementById('stone-message-modal').classList.remove('show');
+  _stoneMessageCallback = null;
+}
+
+function confirmStoneMessage() {
+  const msg = document.getElementById('stone-message-input').value.trim();
+  const cb = _stoneMessageCallback;
+  closeStoneMessageModal();
+  if (cb) cb(msg || null);
+}
+
 // ---- 読解術 (陰陽師・マーカータップ時) ----------------------
 function _showDokaishuOption(youkai, dist) {
   const popup = L.popup({ closeButton: true, className: 'dokaishu-popup-wrap' })
@@ -2371,22 +2399,33 @@ async function _loadYamabushiStones() {
   _yamabushiStoneLayers.forEach((l) => map.removeLayer(l));
   _yamabushiStoneLayers = [];
 
-  // 座標ごとにスタック数を集計
+  // 座標ごとに石をグループ化
   const posMap = new Map();
   for (const s of (data.stones ?? [])) {
     const key = `${s.lat.toFixed(5)},${s.lon.toFixed(5)}`;
-    if (!posMap.has(key)) posMap.set(key, { lat: s.lat, lon: s.lon, count: 0 });
-    posMap.get(key).count += 1;
+    if (!posMap.has(key)) posMap.set(key, { lat: s.lat, lon: s.lon, stones: [] });
+    posMap.get(key).stones.push(s);
   }
 
-  posMap.forEach(({ lat, lon, count }) => {
+  posMap.forEach(({ lat, lon, stones }) => {
+    const count = stones.length;
     const icon = L.divIcon({
       className: '',
       html: `<div class="yamabushi-stone-marker">${count > 1 ? count : '石'}</div>`,
       iconSize:   [28, 28],
       iconAnchor: [14, 28],
     });
-    const layer = L.marker([lat, lon], { icon, zIndexOffset: -100 });
+
+    const rows = stones.map((s) => {
+      const uid = s.deviceId ? _escapeHtml(s.deviceId.slice(0, 8)) + '…' : '?';
+      const msg = s.message
+        ? `<div style="color:#444;margin-top:2px;">${_escapeHtml(s.message)}</div>`
+        : '';
+      return `<div style="margin:4px 0;font-size:11px;border-bottom:1px solid #eee;padding-bottom:4px;"><span style="color:#888;">${uid}</span>${msg}</div>`;
+    }).join('');
+    const popupHtml = `<div style="min-width:130px;max-width:200px;"><b style="font-size:12px;">石積み × ${count}</b>${rows}</div>`;
+
+    const layer = L.marker([lat, lon], { icon, zIndexOffset: -100 }).bindPopup(popupHtml);
     layer.addTo(map);
     _yamabushiStoneLayers.push(layer);
   });
@@ -2394,28 +2433,29 @@ async function _loadYamabushiStones() {
 
 async function activateYamabushiStone() {
   if (!state.playerPos) { showToast('現在地が取得できません'); return; }
-  showToast('石を積んでいます…');
-  const res = await apiPost('/skill/yamabushi/stone', {
-    deviceId: DEVICE_ID,
-    userLat:  state.playerPos.lat,
-    userLon:  state.playerPos.lon,
-  });
-  if (!res.ok) {
-    if (res.status === 402) {
-      const cur = res.data?.current ?? 0;
-      showToast(`術力不足（${cur}/5）— 回復後に試みよ`);
-      _jutsu.current = cur;
-      _renderJutsuHUD();
-    } else {
-      showToast('石積み失敗: ' + (res.data?.error ?? 'エラー'));
+  const pos = { lat: state.playerPos.lat, lon: state.playerPos.lon };
+  openStoneMessageModal(async (message) => {
+    showToast('石を積んでいます…');
+    const body = { deviceId: DEVICE_ID, userLat: pos.lat, userLon: pos.lon };
+    if (message) body.message = message;
+    const res = await apiPost('/skill/yamabushi/stone', body);
+    if (!res.ok) {
+      if (res.status === 402) {
+        const cur = res.data?.current ?? 0;
+        showToast(`術力不足（${cur}/5）— 回復後に試みよ`);
+        _jutsu.current = cur;
+        _renderJutsuHUD();
+      } else {
+        showToast('石積み失敗: ' + (res.data?.error ?? 'エラー'));
+      }
+      return;
     }
-    return;
-  }
-  _jutsu.current = res.data.jutsuriyoku;
-  _jutsu.max     = res.data.jutsuriyoku_max;
-  _renderJutsuHUD();
-  showToast(`石を積みました。術力残: ${res.data.jutsuriyoku}`);
-  await _loadYamabushiStones();
+    _jutsu.current = res.data.jutsuriyoku;
+    _jutsu.max     = res.data.jutsuriyoku_max;
+    _renderJutsuHUD();
+    showToast(`石を積みました。術力残: ${res.data.jutsuriyoku}`);
+    await _loadYamabushiStones();
+  });
 }
 
 // ---- 山伏: 踏破視覚化 --------------------------------------

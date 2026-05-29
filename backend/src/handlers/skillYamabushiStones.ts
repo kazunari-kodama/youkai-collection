@@ -7,7 +7,8 @@ const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Orig
 export const handler: APIGatewayProxyHandler = async () => {
   const res = await ddb.send(new ScanCommand({
     TableName: YAMABUSHI_STONES_TABLE,
-    ProjectionExpression: 'deviceId, stone_id, lat, lon, placed_at',
+    ProjectionExpression: 'deviceId, stone_id, lat, lon, placed_at, #msg',
+    ExpressionAttributeNames: { '#msg': 'message' },
   }));
 
   return {

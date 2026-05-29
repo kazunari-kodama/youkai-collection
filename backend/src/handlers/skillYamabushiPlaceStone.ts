@@ -11,6 +11,7 @@ interface PlaceStoneRequest {
   deviceId: string;
   userLat:  number;
   userLon:  number;
+  message?: string;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -18,9 +19,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   try { body = JSON.parse(event.body ?? ''); }
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
-  const { deviceId, userLat, userLon } = body;
+  const { deviceId, userLat, userLon, message } = body;
   if (!deviceId || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
+  }
+  if (message != null && (typeof message !== 'string' || message.length > 50)) {
+    return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Message must be 50 chars or less' }) };
   }
 
   const profileRes = await ddb.send(new GetCommand({
@@ -43,10 +47,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const stoneId  = randomUUID();
   const placedAt = new Date().toISOString();
 
-  await ddb.send(new PutCommand({
-    TableName: YAMABUSHI_STONES_TABLE,
-    Item: { deviceId, stone_id: stoneId, lat: userLat, lon: userLon, placed_at: placedAt },
-  }));
+  const item: Record<string, unknown> = { deviceId, stone_id: stoneId, lat: userLat, lon: userLon, placed_at: placedAt };
+  if (message) item.message = message;
+
+  await ddb.send(new PutCommand({ TableName: YAMABUSHI_STONES_TABLE, Item: item }));
 
   return {
     statusCode: 200,
