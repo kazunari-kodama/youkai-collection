@@ -1354,6 +1354,7 @@ async function dismissIntro() {
       await restoreRallyFromStorage();
     });
     if (!currentRole) showRoleQuiz();
+    else _syncJobToBackend(currentRole, currentFaction);
     refreshGlobalStats();
     setInterval(refreshGlobalStats, 5 * 60 * 1000);
   }, 600);
