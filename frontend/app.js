@@ -2426,17 +2426,16 @@ async function _loadYamabushiStones() {
       const oid = s.deviceId.replace(/'/g, '');
       const sid = s.stone_id.replace(/'/g, '');
 
-      let action;
-      if (isOwn) {
-        action = `<button onclick="deleteYamabushiStone('${oid}','${sid}')"
-          style="font-size:10px;padding:2px 6px;cursor:pointer;color:#c44;border:1px solid #c44;background:none;border-radius:3px;">削除</button>`;
-      } else {
-        const heart = hasLiked ? '♥' : '♡';
-        const nextAction = hasLiked ? 'unlike' : 'like';
-        const col = hasLiked ? '#e44' : '#aaa';
-        action = `<button onclick="likeYamabushiStone('${oid}','${sid}','${nextAction}')"
-          style="font-size:11px;padding:2px 8px;cursor:pointer;color:${col};border:1px solid ${col};background:none;border-radius:3px;">${heart} ${likeCount}</button>`;
-      }
+      const heart      = hasLiked ? '♥' : '♡';
+      const nextAction = hasLiked ? 'unlike' : 'like';
+      const col        = hasLiked ? '#e44' : '#aaa';
+      const likeBtn    = `<button onclick="likeYamabushiStone('${oid}','${sid}','${nextAction}')"
+        style="font-size:11px;padding:2px 8px;cursor:pointer;color:${col};border:1px solid ${col};background:none;border-radius:3px;">${heart} ${likeCount}</button>`;
+      const deleteBtn  = isOwn
+        ? `<button onclick="deleteYamabushiStone('${oid}','${sid}')"
+            style="font-size:10px;padding:2px 6px;cursor:pointer;color:#c44;border:1px solid #c44;background:none;border-radius:3px;margin-left:4px;">削除</button>`
+        : '';
+      const action = likeBtn + deleteBtn;
 
       return `<div style="margin:5px 0;font-size:11px;padding:5px 6px;border:1px solid #eee;border-radius:4px;">
         <span style="color:#888;font-size:10px;">${uid}</span>${msg}

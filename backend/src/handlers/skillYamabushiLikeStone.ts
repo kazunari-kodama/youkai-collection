@@ -20,9 +20,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (!deviceId || !owner_device_id || !stone_id || !action) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
-  if (deviceId === owner_device_id) {
-    return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Cannot like own stone' }) };
-  }
   if (action !== 'like' && action !== 'unlike') {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid action' }) };
   }
