@@ -35,36 +35,41 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       .map((c) => c.youkaiId as string),
   );
 
-  // 全妖怪をスキャンしてリージョン情報を取得
+  // 全妖怪をスキャンして都道府県情報を取得
   const yokaiScanRes = await ddb.send(new ScanCommand({
     TableName: YOUKAI_TABLE,
-    ProjectionExpression: 'yokai_id, regions',
+    ProjectionExpression: 'yokai_id, prefecture, regions',
   }));
   const allYoukai = yokaiScanRes.Items ?? [];
 
-  // 地域ごとに集計
-  const regionMap = new Map<string, { total: number; sealed: number }>();
+  // 都道府県ごとに集計（prefecture 優先、未設定時は regions[0] にフォールバック）
+  const prefMap = new Map<string, { total: number; sealed: number }>();
   for (const y of allYoukai) {
-    const region = (y.regions as string[] | undefined)?.[0] ?? '不明';
-    if (!regionMap.has(region)) regionMap.set(region, { total: 0, sealed: 0 });
-    const r = regionMap.get(region)!;
+    const pref =
+      (y.prefecture as string | undefined) ??
+      (y.regions as string[] | undefined)?.[0] ??
+      '不明';
+    if (!prefMap.has(pref)) prefMap.set(pref, { total: 0, sealed: 0 });
+    const r = prefMap.get(pref)!;
     r.total += 1;
     if (sealedIds.has(y.yokai_id as string)) r.sealed += 1;
   }
 
-  const regions = Array.from(regionMap.entries())
+  // 1体も配置されていない都道府県は除外（Map上ありえないが明示）
+  const prefectures = Array.from(prefMap.entries())
+    .filter(([, { total }]) => total > 0)
     .map(([name, { total, sealed }]) => ({
       name,
       total,
       sealed,
-      rate_pct: total > 0 ? Math.round((sealed / total) * 100) : 0,
+      rate_pct: Math.round((sealed / total) * 100),
     }))
-    .sort((a, b) => b.rate_pct - a.rate_pct);
+    .sort((a, b) => b.rate_pct - a.rate_pct || a.name.localeCompare(b.name, 'ja'));
 
-  const totalYoukai  = allYoukai.length;
-  const totalSealed  = sealedIds.size;
-  const overallPct   = totalYoukai > 0 ? Math.round((totalSealed / totalYoukai) * 100) : 0;
-  const bonus        = Math.min(BONUS_MAX, Math.floor(overallPct / 20) * BONUS_PER_20PCT);
+  const totalYoukai = allYoukai.length;
+  const totalSealed = sealedIds.size;
+  const overallPct  = totalYoukai > 0 ? Math.round((totalSealed / totalYoukai) * 100) : 0;
+  const bonus       = Math.min(BONUS_MAX, Math.floor(overallPct / 20) * BONUS_PER_20PCT);
 
   await ddb.send(new UpdateCommand({
     TableName: PLAYER_PROFILE_TABLE,
@@ -76,6 +81,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   return {
     statusCode: 200,
     headers: HEADERS,
-    body: JSON.stringify({ regions, overall_pct: overallPct, bonus }),
+    body: JSON.stringify({ prefectures, overall_pct: overallPct, bonus }),
   };
 };

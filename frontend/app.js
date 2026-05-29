@@ -2419,26 +2419,51 @@ async function activateYamabushiStone() {
 }
 
 // ---- 山伏: 踏破視覚化 --------------------------------------
+async function _getCurrentPrefecture() {
+  const pos = state.playerPos;
+  if (!pos) return null;
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lon}&format=json&accept-language=ja`,
+      { headers: { 'User-Agent': 'YokaiCollection/1.0' } }
+    );
+    const d = await r.json();
+    return d.address?.state ?? d.address?.province ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function activateYamabushiTraversal() {
   if (currentRole !== 'yamabushi') return;
   showToast('踏破率を計算中…');
-  const res = await apiGet(`/skill/yamabushi/traversal?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
+
+  const [res, currentPref] = await Promise.all([
+    apiGet(`/skill/yamabushi/traversal?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null),
+    _getCurrentPrefecture(),
+  ]);
   if (!res) { showToast('踏破視覚化に失敗しました'); return; }
 
-  const { regions, overall_pct, bonus } = res;
+  const { prefectures, overall_pct, bonus } = res;
+
+  // 現在地の都道府県を先頭に固定、残りは踏破率順
+  const sorted = currentPref
+    ? [...prefectures.filter(p => p.name === currentPref), ...prefectures.filter(p => p.name !== currentPref)]
+    : prefectures;
 
   let rows = '';
-  for (const r of regions) {
-    const bar = '■'.repeat(Math.round(r.rate_pct / 10)) + '□'.repeat(10 - Math.round(r.rate_pct / 10));
-    rows += `<div class="traversal-row">
-      <span class="traversal-region">${r.name}</span>
+  for (const p of sorted) {
+    const isCurrent = currentPref && p.name === currentPref;
+    const bar = '■'.repeat(Math.round(p.rate_pct / 10)) + '□'.repeat(10 - Math.round(p.rate_pct / 10));
+    rows += `<div class="traversal-row${isCurrent ? ' traversal-current' : ''}">
+      <span class="traversal-region">${p.name}${isCurrent ? ' ◀' : ''}</span>
       <span class="traversal-bar">${bar}</span>
-      <span class="traversal-pct">${r.rate_pct}%</span>
-      <span class="traversal-count">${r.sealed}/${r.total}</span>
+      <span class="traversal-pct">${p.rate_pct}%</span>
+      <span class="traversal-count">${p.sealed}/${p.total}</span>
     </div>`;
   }
 
-  const bonusLine = `踏破率 ${overall_pct}% → 封印ボーナス -${bonus}`;
+  const bonusLine = `全国踏破率 ${overall_pct}% → 封印ボーナス -${bonus}`;
 
   const overlay = document.getElementById('skill-result-overlay');
   document.getElementById('skill-result-title').textContent = '踏 破 視 覚 化';
