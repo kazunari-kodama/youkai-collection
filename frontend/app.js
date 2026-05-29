@@ -1339,6 +1339,7 @@ async function dismissIntro() {
     if (!ok) return;
     waitForLeaflet(async () => {
       initMap();
+      _initSkillUI();
       startGeolocation();
       await restoreRallyFromStorage();
     });
@@ -1861,6 +1862,7 @@ let _kekkaiBarrierLayers = [];  // 結界ポリゴン（全員表示）
 let _kekkaiMyStones = [];
 
 function _renderBarriers(barriers) {
+  if (!map) return;
   _kekkaiBarrierLayers.forEach((l) => map.removeLayer(l));
   _kekkaiBarrierLayers = [];
   (barriers ?? []).forEach((b) => {
@@ -2353,7 +2355,7 @@ let _yamabushiStoneLayers = [];
 
 async function _loadYamabushiStones() {
   const data = await apiGet('/skill/yamabushi/stones').catch(() => null);
-  if (!data) return;
+  if (!data || !map) return;
 
   _yamabushiStoneLayers.forEach((l) => map.removeLayer(l));
   _yamabushiStoneLayers = [];
