@@ -299,7 +299,7 @@ function addYoukaiMarker(youkai) {
       `<div class="marker-progress-wrap"><div class="marker-progress-fill" style="width:${pct}%"></div></div>` +
       `</div>`;
   } else if (aragamiSet.has(youkai.id)) {
-    markerHtml = `<div class="hitodama-marker aragami-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.png" alt=""></div>`;
+    markerHtml = `<div class="hitodama-marker aragami-marker" data-id="${youkai.id}"><img src="assets/images/aratama.png" alt=""></div>`;
   } else {
     markerHtml = `<div class="hitodama-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.png" alt=""></div>`;
   }

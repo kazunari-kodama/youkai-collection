@@ -263,11 +263,11 @@ html, body {
 }
 .hitodama-marker.aragami-marker {
   animation: aragami-pulse 1.6s ease-in-out infinite;
-  filter: drop-shadow(0 0 10px rgba(200,48,42,0.9)) hue-rotate(170deg) saturate(2);
+  filter: drop-shadow(0 0 10px rgba(200,48,42,0.9));
 }
 @keyframes aragami-pulse {
-  0%, 100% { transform: translateY(0) rotate(-4deg) scale(1); filter: drop-shadow(0 0 8px rgba(200,48,42,0.8)) hue-rotate(170deg) saturate(2); }
-  50% { transform: translateY(-7px) rotate(4deg) scale(1.2); filter: drop-shadow(0 0 16px rgba(200,48,42,1)) hue-rotate(170deg) saturate(3); }
+  0%, 100% { transform: translateY(0) rotate(-4deg) scale(1); filter: drop-shadow(0 0 8px rgba(200,48,42,0.8)); }
+  50% { transform: translateY(-7px) rotate(4deg) scale(1.2); filter: drop-shadow(0 0 16px rgba(200,48,42,1)); }
 }
 
 .captured-marker {
