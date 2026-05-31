@@ -2467,10 +2467,55 @@ async function activateKitoshiTakusen() {
     return;
   }
   const d = res.data;
+  _animateTakusenSonar(
+    state.playerPos.lat, state.playerPos.lon,
+    d.lat, d.lon,
+    d.youkai_id,
+  );
   showSkillResult(
     '託 宣',
-    `神意が示された。\n\n「${d.youkai_name}」\n\nこの妖怪への封印試行回数が\n-2 される（24時間）\n\n術力残: ${d.jutsuriyoku}`,
+    `神意が示された。\n\n選ばれし封印地が地図上に浮かび上がる…\n\n封印試行回数 -2（24時間）\n\n術力残: ${d.jutsuriyoku}`,
   );
+}
+
+function _animateTakusenSonar(fromLat, fromLon, toLat, toLon, youkaiId) {
+  const dist     = distanceMeters(fromLat, fromLon, toLat, toLon);
+  const duration = Math.max(1800, Math.min(3200, dist / 2.5));
+
+  // 複数リングで本物のソナーっぽく
+  [0, 300, 600].forEach((delay) => {
+    setTimeout(() => {
+      const ring = L.circle([fromLat, fromLon], {
+        radius: 0, color: '#d4b96a', fillOpacity: 0,
+        opacity: 0.7, weight: 2, className: 'takusen-ring',
+      }).addTo(map);
+
+      const start = performance.now();
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / duration);
+        ring.setRadius(t * dist);
+        ring.setStyle({ opacity: 0.7 * (1 - t) });
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          map.removeLayer(ring);
+        }
+      };
+      requestAnimationFrame(tick);
+    }, delay);
+  });
+
+  // ソナー到達時にマーカーをフラッシュ
+  setTimeout(() => _flashTakusenMarker(youkaiId), duration);
+}
+
+function _flashTakusenMarker(youkaiId) {
+  const entry = youkaiMarkers[youkaiId];
+  if (!entry) return;
+  const el = entry.marker?.getElement?.();
+  if (!el) return;
+  el.classList.add('takusen-found');
+  setTimeout(() => el.classList.remove('takusen-found'), 4000);
 }
 
 function _checkPrayerProximity(lat, lon) {

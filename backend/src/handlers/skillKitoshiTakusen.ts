@@ -94,7 +94,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     body: JSON.stringify({
       success: true,
       youkai_id:  chosen.yokai_id,
-      youkai_name: chosen.name ?? '???',
       lat: chosen.latitude,
       lon: chosen.longitude,
       expires_at: expiresAt,

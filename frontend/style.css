@@ -1959,6 +1959,18 @@ html, body {
 }
 .leaflet-marker-icon { overflow: visible !important; }
 
+/* 託宣ヒットエフェクト */
+@keyframes takusen-pulse {
+  0%   { filter: drop-shadow(0 0  0px rgba(212,185,106,0)); }
+  30%  { filter: drop-shadow(0 0 18px rgba(212,185,106,1)); }
+  60%  { filter: drop-shadow(0 0  8px rgba(212,185,106,0.6)); }
+  80%  { filter: drop-shadow(0 0 16px rgba(212,185,106,0.9)); }
+  100% { filter: drop-shadow(0 0  0px rgba(212,185,106,0)); }
+}
+.takusen-found {
+  animation: takusen-pulse 1.2s ease-in-out 3;
+}
+
 /* 山伏 石積みマーカー */
 .yamabushi-stone-marker {
   width: 28px;
