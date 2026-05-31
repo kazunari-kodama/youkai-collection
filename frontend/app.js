@@ -2533,6 +2533,7 @@ let _takusenGlow = null;
 
 function _showTakusenGlow(lat, lon) {
   _clearTakusenGlow();
+  map.panTo([lat, lon]);
   _takusenGlow = L.circle([lat, lon], {
     radius: 25, color: '#d4b96a', fillColor: '#d4b96a',
     fillOpacity: 0.18, opacity: 0.65, weight: 2, dashArray: '6 5',
