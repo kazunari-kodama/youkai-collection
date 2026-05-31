@@ -2435,6 +2435,7 @@ async function _loadKitoshiPrayers() {
       fillOpacity: 0.10,
       opacity:     0.50,
       weight:      1.5,
+      interactive: false,
     });
     const uid      = _escapeHtml(p.deviceId.slice(0, 8)) + '…';
     const expiresH = Math.max(0, Math.round((new Date(p.expires_at) - Date.now()) / 3600000));
@@ -2537,8 +2538,8 @@ function _showTakusenGlow(lat, lon) {
   _takusenGlow = L.circle([lat, lon], {
     radius: 25, color: '#d4b96a', fillColor: '#d4b96a',
     fillOpacity: 0.18, opacity: 0.65, weight: 2, dashArray: '6 5',
+    interactive: false,
   }).addTo(map);
-  _takusenGlow.bindPopup('<div style="font-size:12px;text-align:center;">🔮 託宣の地<br><small>封印試行回数 -2</small></div>');
 }
 
 function _clearTakusenGlow() {
