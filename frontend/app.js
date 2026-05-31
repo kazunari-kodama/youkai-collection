@@ -2442,7 +2442,6 @@ async function _loadKitoshiPrayers() {
 
     const uid      = _escapeHtml(p.deviceId.slice(0, 8)) + '…';
     const expiresH = Math.max(0, Math.round((new Date(p.expires_at) - Date.now()) / 3600000));
-    const isOwn    = p.deviceId === DEVICE_ID;
     const effect   = isOwn ? '' : '<br><span style="color:#aaa;">払い手-1 / 招き手+1（2時間）</span>';
     const pIcon    = L.divIcon({
       className: '',
