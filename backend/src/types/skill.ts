@@ -35,7 +35,7 @@ export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: 
   omikuji:            { name: 'おみくじ',   desc: '神意を問い、術力や妖怪の状態に影響を与える' },
   yamabushi_traversal:{ name: '踏破視覚化', desc: '各地域の妖怪踏破率を確認し封印ボーナスを更新する' },
   yamabushi_stone:    { name: '石積み',     desc: '術力を消費して現在地に石を積む。踏破の目印となる', rangeM: 0 },
-  inori:              { name: '祈り',       desc: '術力を消費して現在地に祈りを捧げる。半径20m内を通った者に2時間の祈祷効果が宿る', rangeM: 20 },
+  inori:              { name: '祈祷',       desc: '術力を消費して現在地に祈りを捧げる。半径40m内を通った者に2時間の祈祷効果が宿る', rangeM: 40 },
   takusen:            { name: '託宣',       desc: '術力を消費して神意を問う。半径10km内の未封印妖怪1体がランダムに選ばれ、試行回数-2の加護が24時間宿る', rangeM: 10000 },
 };
 
@@ -163,7 +163,7 @@ export interface AragamiDBItem {
 }
 
 // ---- 祈祷師定数 ----
-export const PRAYER_RADIUS_M       = 20;
+export const PRAYER_RADIUS_M       = 40;
 export const PRAYER_DURATION_HOURS = 48;
 export const PRAYER_EFFECT_HOURS   = 2;
 

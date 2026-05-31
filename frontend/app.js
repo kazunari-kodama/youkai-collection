@@ -1705,7 +1705,7 @@ const SKILL_DEFS = {
     { id: 'reveal',    name: '霊視',   desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   kitoshi: [
-    { id: 'inori',   name: '祈り',   desc: '術力10を消費して現在地に祈りを捧げる（半径20m・48時間）。通過した払い手は試行回数-1、招き手は+1の効果が2時間宿る。', locationBased: true },
+    { id: 'inori',   name: '祈祷',   desc: '術力10を消費して現在地に祈祷を行う（半径40m・48時間）。通過した払い手は試行回数-1、招き手は+1の効果が2時間宿る。', locationBased: true },
     { id: 'takusen', name: '託宣',   desc: '術力20を消費して神意を問う。半径10km内の未封印妖怪1体がランダムに選ばれ、その妖怪の試行回数-2の加護が24時間宿る。', locationBased: false },
     { id: 'reveal',  name: '祈視',   desc: '祈りの力で妖怪の真名・伝承・出没地を見通す。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
@@ -1789,7 +1789,7 @@ function openSkillPanel() {
     } else if (sk.id === 'yamabushi_stone') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiStone()">現在地に石を積む</button>`;
     } else if (sk.id === 'inori') {
-      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKitoshiPrayer()">現在地に祈りを捧げる</button>`;
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKitoshiPrayer()">現在地で祈祷する</button>`;
     } else if (sk.id === 'takusen') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKitoshiTakusen()">神意を問う</button>`;
     } else if (sk.locationBased) {
@@ -2429,7 +2429,7 @@ async function _loadKitoshiPrayers() {
     const isOwn    = p.deviceId === DEVICE_ID;
     const color    = isOwn ? '#b08040' : '#9070c0';
     const circle   = L.circle([p.lat, p.lon], {
-      radius:      20,
+      radius:      40,
       color,
       fillColor:   color,
       fillOpacity: 0.10,
@@ -2583,7 +2583,7 @@ function _checkPrayerProximity(lat, lon) {
     if (p.deviceId === DEVICE_ID) continue;
     if (_receivedPrayerIds.has(p.prayer_id)) continue;
     const d = distanceMeters(lat, lon, p.lat, p.lon);
-    if (d <= 20) {
+    if (d <= 40) {
       _receivedPrayerIds.add(p.prayer_id);
       _applyPrayerEffect(p.deviceId, p.prayer_id, faction);
     }
