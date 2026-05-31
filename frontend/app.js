@@ -133,13 +133,27 @@ const QUIZ_QUESTIONS = [
 ];
 
 const ROLE_INFO = {
-  onmyoji:    {kanji:'陰陽師', reading:'おんみょうじ', faction:'exorcist',    factionName:'祓い手', emblem:'陰', color:'#1e5fa8', tagline:'暦と式で秩序を読む者',         desc:'世界には法則がある。星の運行、五行の巡り、暦の節目——すべては読み解ける。妖怪もまた、その法則の中にある現象に過ぎない。理解できれば、制御できる。感情より論理、式神は道具——それが陰陽師の道。'},
-  kitoshi:    {kanji:'祈祷師', reading:'きとうし',     faction:'exorcist',    factionName:'祓い手', emblem:'祈', color:'#e8e0d0', tagline:'個別の祈りで穢れを祓う者',   desc:'理屈ではなく、祈りの力で人と土地を守る。一軒の家、一人の病者、一つの土地——目の前の具体的な誰かのために、術を尽くす。派手な術より、毎日の祈祷の積み重ねを重んじる——それが祈祷師の道。'},
-  miko:       {kanji:'神子',   reading:'みこ',         faction:'exorcist',    factionName:'祓い手', emblem:'神', color:'#c8302a', tagline:'神意を聴き、判別し、橋渡す者', desc:'神意を聴き、判別し、人と神の境を結ぶ。自らの意志を前に出すことはないが、何を伝え、何を留めるかを判別する鋭さを持つ。「これは神の声か、自分の声か」——その問いを生涯問い続ける者。'},
-  yojutsushi: {kanji:'妖術師', reading:'ようじゅつし', faction:'supernatural', factionName:'招き手', emblem:'妖', color:'#b8860b', tagline:'妖の力を借り、契約する者',   desc:'妖怪は契約相手だ。互いに利のある取り決めをすれば、共に在れる。使役でも服従でもなく、交渉——それが妖術師の矜持。妖怪を「取引相手」として尊重する。情に流されない、契約は契約。'},
-  yamabushi:  {kanji:'山伏',   reading:'やまぶし',     faction:'supernatural', factionName:'招き手', emblem:'山', color:'#2d6e3e', tagline:'自ら山に分け入り、近づく者', desc:'山に入り、滝に打たれ、火を焚く中で、人は妖に近づく。妖もまた、人に近づく。人と妖の境など、本来なかった。自らが変容することで、世界の縫い目に近づく——それが山伏の道。'},
-  jujutsushi: {kanji:'呪術師', reading:'じゅじゅつし', faction:'supernatural', factionName:'招き手', emblem:'呪', color:'#8b2fc9', tagline:'呪を編み、世界を書き換える者', desc:'言葉と象徴には力がある。呪を編み、紋を描き、名を与えることで世界は書き換えられる。妖の力もまた、写し取れる。陰陽師が「読み解く」なら、呪術師は「書き換える」——描くほど、世界はずれていく。'},
+  onmyoji:    {kanji:'陰陽師', reading:'おんみょうじ', faction:'exorcist',    factionName:'祓い手', emblem:'陰', emblemImg:'assets/images/emblems/onmyoji.png', color:'#1e5fa8', tagline:'暦と式で秩序を読む者',         desc:'世界には法則がある。星の運行、五行の巡り、暦の節目——すべては読み解ける。妖怪もまた、その法則の中にある現象に過ぎない。理解できれば、制御できる。感情より論理、式神は道具——それが陰陽師の道。'},
+  kitoshi:    {kanji:'祈祷師', reading:'きとうし',     faction:'exorcist',    factionName:'祓い手', emblem:'祈', emblemImg:'assets/images/emblems/kitoshi.png', color:'#e8e0d0', tagline:'個別の祈りで穢れを祓う者',   desc:'理屈ではなく、祈りの力で人と土地を守る。一軒の家、一人の病者、一つの土地——目の前の具体的な誰かのために、術を尽くす。派手な術より、毎日の祈祷の積み重ねを重んじる——それが祈祷師の道。'},
+  miko:       {kanji:'神子',   reading:'みこ',         faction:'exorcist',    factionName:'祓い手', emblem:'神', emblemImg:'assets/images/emblems/miko.png', color:'#c8302a', tagline:'神意を聴き、判別し、橋渡す者', desc:'神意を聴き、判別し、人と神の境を結ぶ。自らの意志を前に出すことはないが、何を伝え、何を留めるかを判別する鋭さを持つ。「これは神の声か、自分の声か」——その問いを生涯問い続ける者。'},
+  yojutsushi: {kanji:'妖術師', reading:'ようじゅつし', faction:'supernatural', factionName:'招き手', emblem:'妖', emblemImg:'assets/images/emblems/yojutsushi.png', color:'#b8860b', tagline:'妖の力を借り、契約する者',   desc:'妖怪は契約相手だ。互いに利のある取り決めをすれば、共に在れる。使役でも服従でもなく、交渉——それが妖術師の矜持。妖怪を「取引相手」として尊重する。情に流されない、契約は契約。'},
+  yamabushi:  {kanji:'山伏',   reading:'やまぶし',     faction:'supernatural', factionName:'招き手', emblem:'山', emblemImg:'assets/images/emblems/yamabushi.png', color:'#2d6e3e', tagline:'自ら山に分け入り、近づく者', desc:'山に入り、滝に打たれ、火を焚く中で、人は妖に近づく。妖もまた、人に近づく。人と妖の境など、本来なかった。自らが変容することで、世界の縫い目に近づく——それが山伏の道。'},
+  jujutsushi: {kanji:'呪術師', reading:'じゅじゅつし', faction:'supernatural', factionName:'招き手', emblem:'呪', emblemImg:'assets/images/emblems/jujutsushi.png', color:'#8b2fc9', tagline:'呪を編み、世界を書き換える者', desc:'言葉と象徴には力がある。呪を編み、紋を描き、名を与えることで世界は書き換えられる。妖の力もまた、写し取れる。陰陽師が「読み解く」なら、呪術師は「書き換える」——描くほど、世界はずれていく。'},
 };
+
+/** エンブレム表示要素に画像（あれば）か漢字をセットする共通処理 */
+function _renderEmblem(el, info) {
+  if (!el || !info) return;
+  if (info.emblemImg) {
+    el.innerHTML = `<img src="${info.emblemImg}" alt="${info.emblem}" class="emblem-img">`;
+    el.style.border = 'none';
+    el.style.background = 'none';
+  } else {
+    el.textContent = info.emblem;
+    el.style.color = info.color;
+    el.style.borderColor = info.color;
+  }
+}
 
 let _quiz = null;
 
@@ -1212,10 +1226,7 @@ function _rqCalcResult() {
   _quiz.result = { role, faction };
 
   const info = ROLE_INFO[role];
-  const emblemEl = document.getElementById('rq-emblem');
-  emblemEl.textContent = info.emblem;
-  emblemEl.style.color = info.color;
-  emblemEl.style.borderColor = info.color;
+  _renderEmblem(document.getElementById('rq-emblem'), info);
   document.getElementById('rq-role-name').textContent = info.kanji;
   document.getElementById('rq-role-reading').textContent = `（${info.reading}）`;
   const factionEl = document.getElementById('rq-role-faction');
@@ -1262,10 +1273,7 @@ function browseOtherRole() {
   const next = roles[(idx + 1) % roles.length];
   const info = ROLE_INFO[next];
   _quiz.result = { role: next, faction: info.faction };
-  const emblemEl = document.getElementById('rq-emblem');
-  emblemEl.textContent = info.emblem;
-  emblemEl.style.color = info.color;
-  emblemEl.style.borderColor = info.color;
+  _renderEmblem(document.getElementById('rq-emblem'), info);
   document.getElementById('rq-role-name').textContent = info.kanji;
   document.getElementById('rq-role-reading').textContent = `（${info.reading}）`;
   const factionEl = document.getElementById('rq-role-faction');
@@ -1317,7 +1325,7 @@ function toggleDebugRolePanel() {
     html += `<button class="drp-btn${isActive ? ' drp-active' : ''}"
       style="border-color:${info.color}${isActive ? ';background:' + info.color + '22' : ''}"
       onclick="setRoleDebug('${key}')">
-      <span class="drp-emblem" style="color:${info.color}">${info.emblem}</span>
+      <img class="drp-emblem-img" src="${info.emblemImg}" alt="${info.emblem}">
       <span class="drp-name">${info.kanji}</span>
       <span class="drp-faction" style="color:${info.faction === 'exorcist' ? '#c8302a' : '#9b59f0'}">${info.factionName}</span>
     </button>`;
@@ -1779,9 +1787,7 @@ function openSkillPanel() {
   if (!currentRole) return;
   const job = _currentJob();
   const info = ROLE_INFO[currentRole];
-  document.getElementById('sp-emblem').textContent = info.emblem;
-  document.getElementById('sp-emblem').style.borderColor = info.color;
-  document.getElementById('sp-emblem').style.color = info.color;
+  _renderEmblem(document.getElementById('sp-emblem'), info);
   document.getElementById('sp-role-name').textContent = info.kanji;
   document.getElementById('sp-rank').textContent = `EXP積算中`;
 
