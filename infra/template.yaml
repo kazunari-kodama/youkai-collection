@@ -34,6 +34,7 @@ Globals:
         KEKKAI_STONES_TABLE:    !Ref KekkaiStonesTable
         KEKKAI_BARRIERS_TABLE:  !Ref KekkaiBarriersTable
         YAMABUSHI_STONES_TABLE: !Ref YamabushiStonesTable
+        KITOSHI_PRAYERS_TABLE:  !Ref KitoshiPrayersTable
 
 Resources:
   # API Gateway
@@ -292,6 +293,28 @@ Resources:
           KeyType: HASH
         - AttributeName: stone_id
           KeyType: RANGE
+
+  # KitoshiPrayers Table (祈祷師: 祈り)
+  KitoshiPrayersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-kitoshi-prayers
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: prayer_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+        - AttributeName: prayer_id
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
   # Player Profile Table
   PlayerProfileTable:
@@ -1744,6 +1767,93 @@ Resources:
           Properties:
             RestApiId: !Ref YokaiApi
             Path: /skill/yamabushi/stone/delete
+            Method: POST
+
+  # Lambda: POST /skill/kitoshi/prayer (祈祷師: 祈りを捧げる)
+  SkillKitoshiPlacePrayerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKitoshiPlacePrayer.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKitoshiPlacePrayer.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:PutItem]
+              Resource: !GetAtt KitoshiPrayersTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kitoshi/prayer
+            Method: POST
+
+  # Lambda: GET /skill/kitoshi/prayers (全員: 祈り一覧)
+  SkillKitoshiPrayersFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKitoshiPrayers.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKitoshiPrayers.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !GetAtt KitoshiPrayersTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kitoshi/prayers
+            Method: GET
+
+  # Lambda: POST /skill/kitoshi/prayer/receive (祈り効果を受け取る)
+  SkillKitoshiReceivePrayerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKitoshiReceivePrayer.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKitoshiReceivePrayer.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !GetAtt KitoshiPrayersTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kitoshi/prayer/receive
             Method: POST
 
   # Lambda: GET /skill/yamabushi/stones (全員: 石一覧)

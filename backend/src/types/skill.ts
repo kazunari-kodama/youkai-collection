@@ -11,13 +11,15 @@ export type SkillId =
   | 'chinkon'         // 神子: 鎮魂術
   | 'omikuji'         // 神子: おみくじ
   | 'yamabushi_traversal' // 山伏: 踏破視覚化
-  | 'yamabushi_stone';    // 山伏: 石積み
+  | 'yamabushi_stone'     // 山伏: 石積み
+  | 'inori';              // 祈祷師: 祈り
 
 export const JOB_SKILLS: Partial<Record<JobId, SkillId[]>> = {
   onmyoji:    ['dokaishu', 'shikigami', 'kekkai', 'hisho_shikigami'],
   jujutsushi: ['kotodama', 'tamafuri', 'utsushidori'],
   miko:       ['chinkon', 'omikuji'],
   yamabushi:  ['yamabushi_traversal', 'yamabushi_stone'],
+  kitoshi:    ['inori'],
 };
 
 export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: number }> = {
@@ -32,6 +34,7 @@ export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: 
   omikuji:            { name: 'おみくじ',   desc: '神意を問い、術力や妖怪の状態に影響を与える' },
   yamabushi_traversal:{ name: '踏破視覚化', desc: '各地域の妖怪踏破率を確認し封印ボーナスを更新する' },
   yamabushi_stone:    { name: '石積み',     desc: '術力を消費して現在地に石を積む。踏破の目印となる', rangeM: 0 },
+  inori:              { name: '祈り',       desc: '術力を消費して現在地に祈りを捧げる。半径20m内を通った者に2時間の祈祷効果が宿る', rangeM: 20 },
 };
 
 export const RANK_SHIKIGAMI_SLOTS: Record<string, number> = {
@@ -76,6 +79,7 @@ export const JUTSU_COST = {
   skill_chinkon:           15,
   skill_utsushidori:       20,
   skill_yamabushi_stone:    5,
+  skill_kitoshi_prayer:    10,
 } as const;
 
 export const RANK_JUTSU_MAX: Record<string, number> = {
@@ -154,6 +158,15 @@ export interface AragamiDBItem {
   expires_at:    string;
   ttl:           number;
 }
+
+// ---- 祈祷師定数 ----
+export const PRAYER_RADIUS_M       = 20;
+export const PRAYER_DURATION_HOURS = 48;
+export const PRAYER_EFFECT_HOURS   = 2;
+
+export const RANK_KITOSHI_PRAYER_LIMIT: Record<string, number> = {
+  C: 3, B: 4, A: 5, S: 6, SS: 8,
+};
 
 /** youryoku (1–5) をプレイヤーランクの序列値に変換 */
 export const YOURYOKU_RANK_ORDER = [0, 0, 1, 2, 3, 4] as const;

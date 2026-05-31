@@ -340,6 +340,7 @@ async function handleMarkerTap(youkai) {
 function updatePlayerPosition(lat, lon) {
   _onWalkPosition(lat, lon);
   state.playerPos = { lat, lon };
+  _checkPrayerProximity(lat, lon);
   if (!state.initialCentered) {
     state.initialCentered = true;
     map.setView([lat, lon], 16);
@@ -1689,6 +1690,7 @@ const SKILL_DEFS = {
     { id: 'reveal',    name: '霊視',   desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   kitoshi: [
+    { id: 'inori',     name: '祈り',     desc: '術力10を消費して現在地に祈りを捧げる（半径20m・48時間）。通過した払い手は試行回数-1、招き手は+1の効果が2時間宿る。', locationBased: true },
     { id: 'reveal',    name: '祈視',     desc: '祈りの力で妖怪の真名・伝承・出没地を見通す。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   miko: [
@@ -1712,7 +1714,7 @@ const SKILL_DEFS = {
 };
 
 const ROLE_JOB = {
-  onmyoji: 'onmyoji', kitoshi: null, miko: 'miko',
+  onmyoji: 'onmyoji', kitoshi: 'kitoshi', miko: 'miko',
   yojutsushi: null, yamabushi: 'yamabushi', jujutsushi: 'jujutsushi',
 };
 
@@ -1726,6 +1728,7 @@ function _initSkillUI() {
   _loadPublicBarriers();
   _loadAragami();
   _loadYamabushiStones();
+  _loadKitoshiPrayers();
   const job = _currentJob();
   if (job === 'onmyoji') {
     _loadKekkaiStones();
@@ -1769,6 +1772,8 @@ function openSkillPanel() {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiTraversal()">踏破率を確認する</button>`;
     } else if (sk.id === 'yamabushi_stone') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiStone()">現在地に石を積む</button>`;
+    } else if (sk.id === 'inori') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKitoshiPrayer()">現在地に祈りを捧げる</button>`;
     } else if (sk.locationBased) {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>地図・ボタンから発動</button>`;
     } else {
@@ -2387,6 +2392,86 @@ async function _launchHishoTo(youkaiId) {
   });
   _renderHisho();
   _startHishoTimer();
+}
+
+// ---- 祈祷師: 祈り ------------------------------------------
+let _kitoshiPrayerLayers = [];
+let _kitoshiPrayersData  = [];
+const _receivedPrayerIds = new Set();
+
+async function _loadKitoshiPrayers() {
+  const data = await apiGet('/skill/kitoshi/prayers').catch(() => null);
+  if (!data || !map) return;
+
+  _kitoshiPrayerLayers.forEach((l) => map.removeLayer(l));
+  _kitoshiPrayerLayers = [];
+  _kitoshiPrayersData  = data.prayers ?? [];
+
+  _kitoshiPrayersData.forEach((p) => {
+    const isOwn    = p.deviceId === DEVICE_ID;
+    const color    = isOwn ? '#b08040' : '#9070c0';
+    const circle   = L.circle([p.lat, p.lon], {
+      radius:      20,
+      color,
+      fillColor:   color,
+      fillOpacity: 0.10,
+      opacity:     0.50,
+      weight:      1.5,
+    });
+    const uid      = _escapeHtml(p.deviceId.slice(0, 8)) + '…';
+    const expiresH = Math.max(0, Math.round((new Date(p.expires_at) - Date.now()) / 3600000));
+    circle.bindPopup(`<div style="font-size:12px;text-align:center;">🙏 祈り<br><small>${uid}</small><br><small>残り約${expiresH}時間</small></div>`);
+    circle.addTo(map);
+    _kitoshiPrayerLayers.push(circle);
+  });
+}
+
+async function activateKitoshiPrayer() {
+  if (!state.playerPos) { showToast('現在地が取得できません'); return; }
+  showToast('祈りを捧げています…');
+  const res = await apiPost('/skill/kitoshi/prayer', {
+    deviceId: DEVICE_ID,
+    userLat:  state.playerPos.lat,
+    userLon:  state.playerPos.lon,
+  });
+  if (!res.ok) {
+    if (res.status === 402) showToast(`術力不足（必要: ${res.data?.required ?? 10}）`);
+    else if (res.status === 409) showToast(`祈りの上限に達しています（${res.data?.current}/${res.data?.max}）`);
+    else if (res.status === 403) showToast('祈祷師のみ使用可能');
+    else showToast('祈り失敗: ' + (res.data?.error ?? 'エラー'));
+    return;
+  }
+  showToast(`祈りを捧げました。術力残: ${res.data.jutsuriyoku}`);
+  await _loadKitoshiPrayers();
+}
+
+function _checkPrayerProximity(lat, lon) {
+  if (!currentRole) return;
+  const faction = ROLE_INFO[currentRole]?.faction;
+  if (!faction) return;
+
+  for (const p of _kitoshiPrayersData) {
+    if (p.deviceId === DEVICE_ID) continue;
+    if (_receivedPrayerIds.has(p.prayer_id)) continue;
+    const d = distanceMeters(lat, lon, p.lat, p.lon);
+    if (d <= 20) {
+      _receivedPrayerIds.add(p.prayer_id);
+      _applyPrayerEffect(p.deviceId, p.prayer_id, faction);
+    }
+  }
+}
+
+async function _applyPrayerEffect(ownerDeviceId, prayerId, faction) {
+  const res = await apiPost('/skill/kitoshi/prayer/receive', {
+    deviceId:        DEVICE_ID,
+    owner_device_id: ownerDeviceId,
+    prayer_id:       prayerId,
+    faction,
+  });
+  if (!res.ok) return;
+  const mod = res.data.modifier;
+  if (mod === -1) showToast('🙏 祈りの加護を受けた\n封印試行回数 -1（2時間）');
+  else            showToast('🙏 祈りの逆風を受けた\n封印試行回数 +1（2時間）');
 }
 
 // ---- 山伏: 石積み ------------------------------------------
