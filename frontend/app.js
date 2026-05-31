@@ -521,14 +521,20 @@ async function triggerUnseal(youkaiId) {
   chinkonBtn.disabled = false;
   chinkonBtn.textContent = '鎮 魂 術 を 施 す';
 
-  document.getElementById('unseal-modal').classList.add('show');
-
-  // 前回のアニメクラスを外しreflowを強制（連続封印でも必ず再生させる）
-  const timg = document.getElementById('talisman-img');
+  // 破れ札を静止表示。アニメは「封じる/契る」ボタン押下時に再生する
   talisman.classList.remove('breaking', 'sealing');
   nameEl.classList.remove('appear');
-  void talisman.offsetWidth;
+  document.getElementById('unseal-modal').classList.add('show');
+}
 
+/** 封印/召喚アニメを再生（ボタン押下時に呼ぶ） */
+function _playSealAnimation(isSupernatural) {
+  const talisman = document.getElementById('unseal-talisman');
+  const nameEl   = document.getElementById('unseal-name');
+  const timg     = document.getElementById('talisman-img');
+  talisman.classList.remove('breaking', 'sealing');
+  nameEl.classList.remove('appear');
+  void talisman.offsetWidth;  // reflow強制で必ず再生
   if (isSupernatural) {
     // 招き手: 破れ目から弾けて妖怪が現れる（召喚）
     if (timg) timg.src = 'assets/images/seal/ofuda-summon-active.png';
@@ -567,11 +573,21 @@ async function confirmCapture() {
   if (detail.rally_key) captureBody.rallyKey = detail.rally_key;
   if (state.pendingQrCode) captureBody.qrCode = state.pendingQrCode;
 
-  const result = await apiPost('/capture', captureBody);
+  // ボタン押下でアニメ再生し、アニメを見せてから結果を反映
+  _playSealAnimation(isSupernatural);
+  const [result] = await Promise.all([
+    apiPost('/capture', captureBody),
+    new Promise((r) => setTimeout(r, 1300)),
+  ]);
 
   if (!result.ok) {
     btn.disabled = false;
     btn.textContent = isSupernatural ? '共 存 の 契 り を 結 ぶ' : '図 鑑 に 封 じ る';
+    // 失敗時は札を破れ状態に戻して再挑戦できるようにする
+    const timg2 = document.getElementById('talisman-img');
+    document.getElementById('unseal-talisman').classList.remove('breaking', 'sealing');
+    document.getElementById('unseal-name').classList.remove('appear');
+    if (timg2) timg2.src = 'assets/images/seal/ofuda-break.png';
     if (result.status === 403) {
       showToast('位置が離れすぎています');
     } else if (result.status === 402) {
