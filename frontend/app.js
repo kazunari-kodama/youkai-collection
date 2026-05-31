@@ -1983,9 +1983,9 @@ async function _loadKekkaiStones() {
   _kekkaiMyStones.forEach((s) => {
     const icon = L.divIcon({
       className: '',
-      html: `<div class="kekkai-stone-marker">石</div>`,
-      iconSize:   [28, 28],
-      iconAnchor: [14, 14],
+      html: `<img src="assets/images/markers/kekkai-stone.png" class="marker-img marker-kekkai" alt="結界石">`,
+      iconSize:   [42, 42],
+      iconAnchor: [21, 21],
     });
     const m = L.marker([s.lat, s.lon], { icon })
       .bindPopup(`<div style="font-size:12px;text-align:center;">結界石<br><small>${new Date(s.placed_at).toLocaleDateString('ja-JP')}</small></div>`)
@@ -2337,10 +2337,10 @@ function _renderHisho() {
     // 式神アイコン（近距離点滅）
     const blinking = remainSec < 60 ? 'hisho-blink' : '';
     const icon = L.divIcon({
-      html: `<div class="hisho-marker ${blinking}">式</div><div class="hisho-eta">${remainStr}</div>`,
+      html: `<img src="assets/images/markers/shikigami.png" class="marker-img marker-shikigami ${blinking}" alt="式神"><div class="hisho-eta">${remainStr}</div>`,
       className: '',
-      iconSize: [32, 52],
-      iconAnchor: [14, 14],
+      iconSize: [44, 60],
+      iconAnchor: [22, 22],
     });
     const marker = L.marker([curLat, curLon], { icon, zIndexOffset: 500 }).addTo(map);
     _hishoLayers.push(marker);
@@ -2477,8 +2477,8 @@ async function _loadKitoshiPrayers() {
     const effect   = isOwn ? '' : '<br><span style="color:#aaa;">払い手-1 / 招き手+1（2時間）</span>';
     const pIcon    = L.divIcon({
       className: '',
-      html: `<div style="font-size:16px;line-height:1;cursor:pointer;filter:drop-shadow(0 0 2px ${isOwn ? '#b08040' : '#9070c0'});">🙏</div>`,
-      iconSize: [20, 20], iconAnchor: [10, 10],
+      html: `<img src="assets/images/markers/inori.png" class="marker-img marker-prayer" alt="祈祷">`,
+      iconSize: [34, 34], iconAnchor: [17, 17],
     });
     const pMarker  = L.marker([p.lat, p.lon], { icon: pIcon, zIndexOffset: -200 })
       .bindTooltip(`<b>祈祷</b><br><span style="color:#888;">${uid}</span><br>残り約${expiresH}時間${effect}`, {
@@ -2597,8 +2597,8 @@ function _showTakusenGlow(lat, lon) {
 
   const icon = L.divIcon({
     className: '',
-    html: '<div style="font-size:18px;line-height:1;cursor:pointer;filter:drop-shadow(0 0 3px #d4b96a);">🔮</div>',
-    iconSize: [22, 22], iconAnchor: [11, 11],
+    html: '<img src="assets/images/markers/takusen.png" class="marker-img marker-takusen" alt="託宣">',
+    iconSize: [36, 36], iconAnchor: [18, 18],
   });
   _takusenInfoMarker = L.marker([lat, lon], { icon, zIndexOffset: -200 })
     .bindTooltip(`<b>託宣の地</b><br>封印試行回数 -2${timeStr}`, {
@@ -2864,9 +2864,11 @@ async function _loadYamabushiStones() {
     const count = stones.length;
     const icon = L.divIcon({
       className: '',
-      html: `<div class="yamabushi-stone-marker">${count > 1 ? count : '石'}</div>`,
-      iconSize:   [28, 28],
-      iconAnchor: [14, 28],
+      html: count > 1
+        ? `<div class="marker-yamabushi-wrap"><img src="assets/images/markers/yamabushi-stone-stack.png" class="marker-img marker-yamabushi" alt="石積み"><span class="marker-yamabushi-count">${count}</span></div>`
+        : `<img src="assets/images/markers/yamabushi-stone.png" class="marker-img marker-yamabushi" alt="石積み">`,
+      iconSize:   [44, 48],
+      iconAnchor: [22, 44],
     });
 
     const rows = stones.map((s) => {
