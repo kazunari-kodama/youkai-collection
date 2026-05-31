@@ -1826,6 +1826,39 @@ Resources:
             Path: /skill/kitoshi/prayers
             Method: GET
 
+  # Lambda: POST /skill/kitoshi/takusen (祈祷師: 託宣)
+  SkillKitoshiTakusenFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillKitoshiTakusen.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillKitoshiTakusen.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/kitoshi/takusen
+            Method: POST
+
   # Lambda: POST /skill/kitoshi/prayer/receive (祈り効果を受け取る)
   SkillKitoshiReceivePrayerFunction:
     Type: AWS::Serverless::Function

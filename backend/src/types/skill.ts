@@ -12,14 +12,15 @@ export type SkillId =
   | 'omikuji'         // 神子: おみくじ
   | 'yamabushi_traversal' // 山伏: 踏破視覚化
   | 'yamabushi_stone'     // 山伏: 石積み
-  | 'inori';              // 祈祷師: 祈り
+  | 'inori'               // 祈祷師: 祈り
+  | 'takusen';            // 祈祷師: 託宣
 
 export const JOB_SKILLS: Partial<Record<JobId, SkillId[]>> = {
   onmyoji:    ['dokaishu', 'shikigami', 'kekkai', 'hisho_shikigami'],
   jujutsushi: ['kotodama', 'tamafuri', 'utsushidori'],
   miko:       ['chinkon', 'omikuji'],
   yamabushi:  ['yamabushi_traversal', 'yamabushi_stone'],
-  kitoshi:    ['inori'],
+  kitoshi:    ['inori', 'takusen'],
 };
 
 export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: number }> = {
@@ -35,6 +36,7 @@ export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: 
   yamabushi_traversal:{ name: '踏破視覚化', desc: '各地域の妖怪踏破率を確認し封印ボーナスを更新する' },
   yamabushi_stone:    { name: '石積み',     desc: '術力を消費して現在地に石を積む。踏破の目印となる', rangeM: 0 },
   inori:              { name: '祈り',       desc: '術力を消費して現在地に祈りを捧げる。半径20m内を通った者に2時間の祈祷効果が宿る', rangeM: 20 },
+  takusen:            { name: '託宣',       desc: '術力を消費して神意を問う。半径10km内の未封印妖怪1体がランダムに選ばれ、試行回数-2の加護が24時間宿る', rangeM: 10000 },
 };
 
 export const RANK_SHIKIGAMI_SLOTS: Record<string, number> = {
@@ -80,6 +82,7 @@ export const JUTSU_COST = {
   skill_utsushidori:       20,
   skill_yamabushi_stone:    5,
   skill_kitoshi_prayer:    10,
+  skill_kitoshi_takusen:   20,
 } as const;
 
 export const RANK_JUTSU_MAX: Record<string, number> = {

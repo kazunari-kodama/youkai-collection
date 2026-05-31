@@ -144,7 +144,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     ddb.send(new GetCommand({
       TableName: PLAYER_PROFILE_TABLE,
       Key: { deviceId },
-      ProjectionExpression: '#r, omikuji_chukichi_until, #j, yamabushi_traversal_bonus, prayer_mod, prayer_mod_until',
+      ProjectionExpression: '#r, omikuji_chukichi_until, #j, yamabushi_traversal_bonus, prayer_mod, prayer_mod_until, takusen_youkai_id, takusen_expires_at',
       ExpressionAttributeNames: { '#r': 'rank', '#j': 'job' },
     })),
     ddb.send(new GetCommand({
@@ -176,6 +176,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const prayerModUntil = (playerRes.Item?.prayer_mod_until as string | undefined) ?? '';
   const prayerBonus    = (prayerModUntil > now) ? prayerMod : 0;
 
+  // 託宣ボーナス: 指定された妖怪のみ-2
+  const takusenYoukaiId  = (playerRes.Item?.takusen_youkai_id  as string | undefined) ?? '';
+  const takusenExpiresAt = (playerRes.Item?.takusen_expires_at as string | undefined) ?? '';
+  const takusenBonus     = (takusenYoukaiId === youkaiId && takusenExpiresAt > now) ? 2 : 0;
+
   // 結界ボーナス判定
   // 荒魂化された妖怪が結界内にいる場合は結界無効（ただし陰陽師ランクが妖力より高ければ有効）
   const insideBarrier = isInsideAnyBarrier(youkai.latitude, youkai.longitude, barriers);
@@ -189,7 +194,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     - (nigitamaBonus ? 1 : 0)
     - (chukichiBonus ? 1 : 0)
     - yamabushiBonus
-    + prayerBonus      // -1 払い手 / +1 招き手
+    - takusenBonus     // 託宣: 指定妖怪-2
+    + prayerBonus      // 祈り: 払い手-1 / 招き手+1
     + aragamiPenalty
   );
 
@@ -213,6 +219,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       chukichi_bonus: chukichiBonus, aragami_debuff: isAragami,
       yamabushi_bonus: yamabushiBonus > 0 ? yamabushiBonus : undefined,
       prayer_bonus: prayerBonus !== 0 ? prayerBonus : undefined,
+      takusen_bonus: takusenBonus > 0 ? takusenBonus : undefined,
     })};
   }
 

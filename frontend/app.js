@@ -1690,8 +1690,9 @@ const SKILL_DEFS = {
     { id: 'reveal',    name: '霊視',   desc: '式の眼で妖怪の真名・伝承・出没地を霊視する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   kitoshi: [
-    { id: 'inori',     name: '祈り',     desc: '術力10を消費して現在地に祈りを捧げる（半径20m・48時間）。通過した払い手は試行回数-1、招き手は+1の効果が2時間宿る。', locationBased: true },
-    { id: 'reveal',    name: '祈視',     desc: '祈りの力で妖怪の真名・伝承・出没地を見通す。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'inori',   name: '祈り',   desc: '術力10を消費して現在地に祈りを捧げる（半径20m・48時間）。通過した払い手は試行回数-1、招き手は+1の効果が2時間宿る。', locationBased: true },
+    { id: 'takusen', name: '託宣',   desc: '術力20を消費して神意を問う。半径10km内の未封印妖怪1体がランダムに選ばれ、その妖怪の試行回数-2の加護が24時間宿る。', locationBased: false },
+    { id: 'reveal',  name: '祈視',   desc: '祈りの力で妖怪の真名・伝承・出没地を見通す。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   miko: [
     { id: 'reveal',   name: '神降',   desc: '神の力を借りて妖怪の真名・伝承・出没地を顕現させる。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
@@ -1774,6 +1775,8 @@ function openSkillPanel() {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiStone()">現在地に石を積む</button>`;
     } else if (sk.id === 'inori') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKitoshiPrayer()">現在地に祈りを捧げる</button>`;
+    } else if (sk.id === 'takusen') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKitoshiTakusen()">神意を問う</button>`;
     } else if (sk.locationBased) {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>地図・ボタンから発動</button>`;
     } else {
@@ -2443,6 +2446,31 @@ async function activateKitoshiPrayer() {
   }
   showToast(`祈りを捧げました。術力残: ${res.data.jutsuriyoku}`);
   await _loadKitoshiPrayers();
+}
+
+async function activateKitoshiTakusen() {
+  if (!state.playerPos) { showToast('現在地が取得できません'); return; }
+  showToast('神意を問うています…');
+  const res = await apiPost('/skill/kitoshi/takusen', {
+    deviceId: DEVICE_ID,
+    userLat:  state.playerPos.lat,
+    userLon:  state.playerPos.lon,
+  });
+  if (!res.ok) {
+    if (res.status === 402) showToast(`術力不足（必要: ${res.data?.required ?? 20}）`);
+    else if (res.status === 403) showToast('祈祷師のみ使用可能');
+    else if (res.status === 404) showToast('半径10km内に未封印の妖怪がいません');
+    else if (res.status === 409) {
+      const h = Math.max(0, Math.round((new Date(res.data?.expires_at) - Date.now()) / 3600000));
+      showToast(`託宣はすでに発動中です（残り約${h}時間）`);
+    } else showToast('託宣失敗: ' + (res.data?.error ?? 'エラー'));
+    return;
+  }
+  const d = res.data;
+  showSkillResult(
+    '託 宣',
+    `神意が示された。\n\n「${d.youkai_name}」\n\nこの妖怪への封印試行回数が\n-2 される（24時間）\n\n術力残: ${d.jutsuriyoku}`,
+  );
 }
 
 function _checkPrayerProximity(lat, lon) {
