@@ -468,6 +468,10 @@ Resources:
               Action:
                 - dynamodb:GetItem
               Resource: !GetAtt AragamiTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt NoroiCursesTable.Arn
       Events:
         Api:
           Type: Api
