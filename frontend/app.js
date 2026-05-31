@@ -2461,8 +2461,12 @@ async function activateKitoshiTakusen() {
     else if (res.status === 403) showToast('祈祷師のみ使用可能');
     else if (res.status === 404) showToast('半径10km内に未封印の妖怪がいません');
     else if (res.status === 409) {
-      const h = Math.max(0, Math.round((new Date(res.data?.expires_at) - Date.now()) / 3600000));
-      showToast(`託宣はすでに発動中です（残り約${h}時間）`);
+      const d = res.data;
+      const h = Math.max(0, Math.round((new Date(d?.expires_at) - Date.now()) / 3600000));
+      showToast(`託宣発動中（残り約${h}時間）`);
+      if (d?.lat != null && state.playerPos) {
+        _animateTakusenSonar(state.playerPos.lat, state.playerPos.lon, d.lat, d.lon, d.youkai_id);
+      }
     } else showToast('託宣失敗: ' + (res.data?.error ?? 'エラー'));
     return;
   }

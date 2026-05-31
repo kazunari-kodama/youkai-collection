@@ -39,7 +39,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const existingExpiry = profileRes.Item?.takusen_expires_at as string | undefined;
   if (existingExpiry && existingExpiry > now) {
     return { statusCode: 409, headers: HEADERS, body: JSON.stringify({
-      error: 'Takusen already active', expires_at: existingExpiry,
+      error: 'Takusen already active',
+      expires_at:  existingExpiry,
+      youkai_id:   profileRes.Item?.takusen_youkai_id,
+      lat:         profileRes.Item?.takusen_lat,
+      lon:         profileRes.Item?.takusen_lon,
     })};
   }
 
@@ -84,8 +88,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   await ddb.send(new UpdateCommand({
     TableName: PLAYER_PROFILE_TABLE,
     Key: { deviceId },
-    UpdateExpression: 'SET takusen_youkai_id = :y, takusen_expires_at = :e',
-    ExpressionAttributeValues: { ':y': chosen.yokai_id, ':e': expiresAt },
+    UpdateExpression: 'SET takusen_youkai_id = :y, takusen_expires_at = :e, takusen_lat = :la, takusen_lon = :lo',
+    ExpressionAttributeValues: {
+      ':y': chosen.yokai_id, ':e': expiresAt,
+      ':la': chosen.latitude, ':lo': chosen.longitude,
+    },
   }));
 
   return {

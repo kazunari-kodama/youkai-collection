@@ -144,7 +144,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     ddb.send(new GetCommand({
       TableName: PLAYER_PROFILE_TABLE,
       Key: { deviceId },
-      ProjectionExpression: '#r, omikuji_chukichi_until, #j, yamabushi_traversal_bonus, prayer_mod, prayer_mod_until, takusen_youkai_id, takusen_expires_at',
+      ProjectionExpression: '#r, omikuji_chukichi_until, #j, yamabushi_traversal_bonus, prayer_mod, prayer_mod_until, takusen_youkai_id, takusen_expires_at, takusen_lat, takusen_lon',
       ExpressionAttributeNames: { '#r': 'rank', '#j': 'job' },
     })),
     ddb.send(new GetCommand({
