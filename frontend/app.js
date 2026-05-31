@@ -2478,7 +2478,7 @@ async function _loadKitoshiPrayers() {
     const pIcon    = L.divIcon({
       className: '',
       html: `<img src="assets/images/markers/inori.png" class="marker-img marker-prayer" alt="祈祷">`,
-      iconSize: [34, 34], iconAnchor: [17, 17],
+      iconSize: [34, 34], iconAnchor: [14, 14],
     });
     const pMarker  = L.marker([p.lat, p.lon], { icon: pIcon, zIndexOffset: -200 })
       .bindTooltip(`<b>祈祷</b><br><span style="color:#888;">${uid}</span><br>残り約${expiresH}時間${effect}`, {
