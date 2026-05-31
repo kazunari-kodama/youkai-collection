@@ -1596,6 +1596,33 @@ Resources:
             Path: /debug/kekkai
             Method: DELETE
 
+  # Lambda: DELETE /debug/takusen (デバッグ用: 託宣状態クリア)
+  DebugClearTakusenFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/debugClearTakusen.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/debugClearTakusen.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /debug/takusen
+            Method: DELETE
+
   # Lambda: GET /skill/kekkai/barriers (全員: 有効な結界一覧)
   SkillKekkaiBarriersPublicFunction:
     Type: AWS::Serverless::Function

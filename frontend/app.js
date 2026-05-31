@@ -22,6 +22,7 @@ const IS_QR_TEST = new URLSearchParams(location.search).get('qr') === '1';
 document.getElementById('btn-debug').style.display = IS_DEV ? '' : 'none';
 document.getElementById('btn-clear-collection').style.display = IS_DEV ? '' : 'none';
 document.getElementById('btn-clear-kekkai').style.display = IS_DEV ? '' : 'none';
+document.getElementById('btn-clear-takusen').style.display = IS_DEV ? '' : 'none';
 const AIZU_CASTLE = { lat: 37.4946, lon: 139.9293 };
 const TOKYO_STATION = { lat: 35.6812, lon: 139.7671 };
 
@@ -1073,6 +1074,19 @@ async function clearCollection() {
     showToast(`図鑑クリア完了 (${deleted}件削除)`);
   } catch (e) {
     showToast('クリアに失敗しました: ' + e.message, true);
+  }
+}
+
+async function clearTakusen() {
+  if (!confirm('託宣の発動状態をクリアしますか？')) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/debug/takusen?deviceId=${encodeURIComponent(DEVICE_ID)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(await res.text());
+    showToast('託宣クリア完了');
+  } catch (e) {
+    showToast('クリアに失敗しました: ' + e.message);
   }
 }
 
