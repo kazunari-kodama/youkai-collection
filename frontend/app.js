@@ -1846,7 +1846,10 @@ function openSkillPanel() {
     } else if (sk.id === 'kekkai') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKekkaiStone()">現在地に石を置く</button>`;
     } else if (sk.id === 'tamafuri') {
-      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();openCollectionForSkill('tamafuri')">解除済み妖怪を選ぶ</button>`;
+      const relCount = [...capturedIds.values()].filter((v) => v === 'release').length;
+      actionBtn = relCount === 0
+        ? `<button class="skill-action-btn ${isBtnColor}" disabled>解除済みの妖怪がいません</button>`
+        : `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();openCollectionForSkill('tamafuri')">解除済み妖怪を選ぶ（${relCount}体）</button>`;
     } else if (sk.id === 'chinkon') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>荒魂妖怪に近づいて発動</button>`;
     } else if (sk.id === 'omikuji') {
