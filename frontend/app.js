@@ -2481,6 +2481,7 @@ async function activateKitoshiTakusen() {
       const h = Math.max(0, Math.round((new Date(d?.expires_at) - Date.now()) / 3600000));
       showToast(`託宣発動中（残り約${h}時間）`);
       if (d?.lat != null) {
+        _takusenExpiresAt = d.expires_at ?? null;
         if (state.playerPos) _animateTakusenSonar(state.playerPos.lat, state.playerPos.lon, d.lat, d.lon, d.youkai_id);
         _showTakusenGlow(d.lat, d.lon);
       }
@@ -2488,6 +2489,7 @@ async function activateKitoshiTakusen() {
     return;
   }
   const d = res.data;
+  _takusenExpiresAt = d.expires_at ?? null;
   _animateTakusenSonar(
     state.playerPos.lat, state.playerPos.lon,
     d.lat, d.lon,
@@ -2530,20 +2532,40 @@ function _animateTakusenSonar(fromLat, fromLon, toLat, toLon, youkaiId) {
   setTimeout(() => _flashTakusenMarker(toLat, toLon, youkaiId), duration);
 }
 
-let _takusenGlow = null;
+let _takusenGlow       = null;
+let _takusenInfoMarker = null;
+let _takusenExpiresAt  = null;
 
 function _showTakusenGlow(lat, lon) {
   _clearTakusenGlow();
   map.panTo([lat, lon]);
+
   _takusenGlow = L.circle([lat, lon], {
     radius: 25, color: '#d4b96a', fillColor: '#d4b96a',
     fillOpacity: 0.18, opacity: 0.65, weight: 2, dashArray: '6 5',
     interactive: false,
   }).addTo(map);
+
+  const h = _takusenExpiresAt
+    ? Math.max(0, Math.round((new Date(_takusenExpiresAt) - Date.now()) / 3600000))
+    : null;
+  const timeStr = h !== null ? `<br><span style="color:#aaa;">残り約${h}時間</span>` : '';
+
+  const icon = L.divIcon({
+    className: '',
+    html: '<div style="font-size:18px;line-height:1;cursor:pointer;filter:drop-shadow(0 0 3px #d4b96a);">🔮</div>',
+    iconSize: [22, 22], iconAnchor: [11, 11],
+  });
+  _takusenInfoMarker = L.marker([lat, lon], { icon, zIndexOffset: -200 })
+    .bindTooltip(`<b>託宣の地</b><br>封印試行回数 -2${timeStr}`, {
+      direction: 'top', opacity: 0.95, sticky: false,
+    })
+    .addTo(map);
 }
 
 function _clearTakusenGlow() {
-  if (_takusenGlow) { map.removeLayer(_takusenGlow); _takusenGlow = null; }
+  if (_takusenGlow)       { map.removeLayer(_takusenGlow);       _takusenGlow = null; }
+  if (_takusenInfoMarker) { map.removeLayer(_takusenInfoMarker); _takusenInfoMarker = null; }
 }
 
 function _flashTakusenMarker(lat, lon, youkaiId) {
