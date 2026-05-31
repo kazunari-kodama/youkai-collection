@@ -444,7 +444,7 @@ function startGeolocation() {
   }
   setStatus('位置情報取得中…');
   navigator.geolocation.watchPosition(
-    (pos) => updatePlayerPosition(pos.coords.latitude, pos.coords.longitude),
+    (pos) => { if (!state.debugMode) updatePlayerPosition(pos.coords.latitude, pos.coords.longitude); },
     (err) => {
       console.warn('Geolocation error:', err);
       setStatus(IS_DEV ? '位置情報拒否/失敗 — デバッグONで地図クリック' : '位置情報を取得できませんでした');
@@ -523,19 +523,22 @@ async function triggerUnseal(youkaiId) {
 
   document.getElementById('unseal-modal').classList.add('show');
 
-  requestAnimationFrame(() => {
-    const timg = document.getElementById('talisman-img');
-    if (isSupernatural) {
-      // 招き手: 破れ目から弾けて妖怪が現れる（召喚）
-      if (timg) timg.src = 'assets/images/seal/ofuda-summon-active.png';
-      talisman.classList.add('breaking');
-    } else {
-      // 払い手: 破れた封印を封じ直し、封の札が光って封印成立
-      if (timg) timg.src = 'assets/images/seal/ofuda-seal.png';
-      talisman.classList.add('sealing');
-    }
-    nameEl.classList.add('appear');
-  });
+  // 前回のアニメクラスを外しreflowを強制（連続封印でも必ず再生させる）
+  const timg = document.getElementById('talisman-img');
+  talisman.classList.remove('breaking', 'sealing');
+  nameEl.classList.remove('appear');
+  void talisman.offsetWidth;
+
+  if (isSupernatural) {
+    // 招き手: 破れ目から弾けて妖怪が現れる（召喚）
+    if (timg) timg.src = 'assets/images/seal/ofuda-summon-active.png';
+    talisman.classList.add('breaking');
+  } else {
+    // 払い手: 破れた封印を封じ直し、封の札が光って封印成立
+    if (timg) timg.src = 'assets/images/seal/ofuda-seal.png';
+    talisman.classList.add('sealing');
+  }
+  nameEl.classList.add('appear');
 }
 
 async function confirmCapture() {
