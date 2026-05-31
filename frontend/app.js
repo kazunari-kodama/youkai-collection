@@ -2437,11 +2437,24 @@ async function _loadKitoshiPrayers() {
       weight:      1.5,
       interactive: false,
     });
-    const uid      = _escapeHtml(p.deviceId.slice(0, 8)) + '…';
-    const expiresH = Math.max(0, Math.round((new Date(p.expires_at) - Date.now()) / 3600000));
-    circle.bindPopup(`<div style="font-size:12px;text-align:center;">🙏 祈り<br><small>${uid}</small><br><small>残り約${expiresH}時間</small></div>`);
     circle.addTo(map);
     _kitoshiPrayerLayers.push(circle);
+
+    const uid      = _escapeHtml(p.deviceId.slice(0, 8)) + '…';
+    const expiresH = Math.max(0, Math.round((new Date(p.expires_at) - Date.now()) / 3600000));
+    const isOwn    = p.deviceId === DEVICE_ID;
+    const effect   = isOwn ? '' : '<br><span style="color:#aaa;">払い手-1 / 招き手+1（2時間）</span>';
+    const pIcon    = L.divIcon({
+      className: '',
+      html: `<div style="font-size:16px;line-height:1;cursor:pointer;filter:drop-shadow(0 0 2px ${isOwn ? '#b08040' : '#9070c0'});">🙏</div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10],
+    });
+    const pMarker  = L.marker([p.lat, p.lon], { icon: pIcon, zIndexOffset: -200 })
+      .bindTooltip(`<b>祈祷</b><br><span style="color:#888;">${uid}</span><br>残り約${expiresH}時間${effect}`, {
+        direction: 'top', opacity: 0.95,
+      })
+      .addTo(map);
+    _kitoshiPrayerLayers.push(pMarker);
   });
 }
 
