@@ -1791,7 +1791,7 @@ const SKILL_DEFS = {
   ],
   jujutsushi: [
     { id: 'reveal',      name: '言霊術',    desc: '言霊の力で妖怪の真名・伝承・出没地を解き明かす。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
-    { id: 'tamafuri',    name: '魂振',      desc: '解除した妖怪の魂を振り起こし、荒魂化させる。荒魂妖怪は周囲の結界を乱し、封印の試みを困難にする。コレクション画面の解除済み妖怪から発動。', locationBased: false },
+    { id: 'tamafuri',    name: '魂振',      desc: '図鑑の妖怪の魂を振り起こし、荒魂化させる。荒魂妖怪は周囲の結界を乱し、封印の試みを困難にする。コレクション画面の収録済み妖怪から発動。', locationBased: false },
     { id: 'utsushidori', name: '写し取り',  desc: '契約した妖怪の力（属性キーワード）を己の内に写し取る。', locationBased: false },
   ],
 };
@@ -1846,10 +1846,10 @@ function openSkillPanel() {
     } else if (sk.id === 'kekkai') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKekkaiStone()">現在地に石を置く</button>`;
     } else if (sk.id === 'tamafuri') {
-      const relCount = [...capturedIds.values()].filter((v) => v === 'release').length;
-      actionBtn = relCount === 0
-        ? `<button class="skill-action-btn ${isBtnColor}" disabled>解除済みの妖怪がいません</button>`
-        : `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();openCollectionForSkill('tamafuri')">解除済み妖怪を選ぶ（${relCount}体）</button>`;
+      const owned = [...capturedIds.values()].filter((v) => v === 'seal' || v === 'bond').length;
+      actionBtn = owned === 0
+        ? `<button class="skill-action-btn ${isBtnColor}" disabled>図鑑に妖怪がいません</button>`
+        : `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();openCollectionForSkill('tamafuri')">図鑑の妖怪を選ぶ（${owned}体）</button>`;
     } else if (sk.id === 'chinkon') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" disabled>荒魂妖怪に近づいて発動</button>`;
     } else if (sk.id === 'omikuji') {
@@ -2132,7 +2132,7 @@ async function activateTamafuri(youkaiId) {
   if (!res.ok) {
     const errMap = {
       'Jujutsushi only':        '呪術師のみ発動できる',
-      'Yokai not released by you': 'この妖怪を解除していない',
+      'Yokai not in collection': '図鑑に収録されていない妖怪',
       'Already aragami':        'すでに荒魂化されている',
       'Insufficient jutsuriyoku': '術力が不足している',
     };
@@ -2296,7 +2296,7 @@ openCollection = function(skillId = null) {
     } else if (skillId === 'utsushidori' && actionType === 'bond' && job === 'jujutsushi') {
       skillBtn = `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px"
         onclick="event.stopPropagation();openUtsushidoriPicker('${y.id}')">力を写し取る</button>`;
-    } else if (skillId === 'tamafuri' && actionType === 'release' && job === 'jujutsushi') {
+    } else if (skillId === 'tamafuri' && (actionType === 'seal' || actionType === 'bond') && job === 'jujutsushi') {
       const alreadyAragami = aragamiSet.has(y.id);
       skillBtn = alreadyAragami
         ? `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px" disabled>荒魂化済</button>`

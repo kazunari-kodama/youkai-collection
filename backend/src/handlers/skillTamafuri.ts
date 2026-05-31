@@ -27,14 +27,15 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Jujutsushi only' }) };
   }
 
-  // 自分がこの妖怪を解除済みか確認
+  // 自分の図鑑に収録済み（封印 or 契約）か確認
   const captureRes = await ddb.send(new GetCommand({
     TableName: CAPTURES_TABLE,
     Key: { deviceId, youkaiId },
     ProjectionExpression: 'actionType',
   }));
-  if (captureRes.Item?.actionType !== 'release') {
-    return { statusCode: 409, headers: HEADERS, body: JSON.stringify({ error: 'Yokai not released by you' }) };
+  const capAt = captureRes.Item?.actionType;
+  if (capAt !== 'seal' && capAt !== 'bond') {
+    return { statusCode: 409, headers: HEADERS, body: JSON.stringify({ error: 'Yokai not in collection' }) };
   }
 
   // 既に荒魂化されていないか確認
