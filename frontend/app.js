@@ -334,7 +334,8 @@ async function handleMarkerTap(youkai) {
     await launchShoujutsu(youkai.id);
     return;
   }
-  if (capturedIds.has(youkai.id)) {
+  const _at = capturedIds.get(youkai.id);
+  if (_at === 'seal' || _at === 'bond') {
     await showDetail(youkai.id);
     return;
   }
@@ -1030,12 +1031,21 @@ function openCollection() {
   const content = document.getElementById('collection-content');
   let html = '<div class="collection-grid">';
   youkaiData.forEach((y) => {
-    const captured = capturedIds.has(y.id);
-    if (captured) {
+    const at = capturedIds.get(y.id);
+    if (at === 'seal' || at === 'bond') {
       html += `
         <div class="collection-card" onclick="closeCollectionAndDetail('${y.id}')">
           <div class="ck-img"><img src="${y.camera_url}" alt="${y.name}" onerror="this.style.display='none'"></div>
           <div class="ck-name">${y.name}</div>
+        </div>`;
+    } else if (at === 'in_progress') {
+      const prog = sealProgress.get(y.id);
+      const progText = prog ? `封印中 ${prog.progress}/${prog.required}` : '封印中';
+      html += `
+        <div class="collection-card locked">
+          <div class="ck-glyph">封</div>
+          <div class="ck-name">${y.name}</div>
+          <div class="ck-dist">${progText}</div>
         </div>`;
     } else {
       html += `
@@ -2224,13 +2234,24 @@ openCollection = function(skillId = null) {
 
   youkaiData.forEach((y) => {
     const actionType = capturedIds.get(y.id);
-    const captured = actionType !== undefined;
-    if (!captured) {
+    if (actionType === undefined) {
       html += `
         <div class="collection-card locked">
           <div class="ck-glyph">？</div>
           <div class="ck-name">？？？</div>
           <div class="ck-dist">○ 未発見</div>
+        </div>`;
+      return;
+    }
+    // 封印試行中は正体画像を隠し、名前と進捗のみ表示
+    if (actionType === 'in_progress') {
+      const prog = sealProgress.get(y.id);
+      const progText = prog ? `封印中 ${prog.progress}/${prog.required}` : '封印中';
+      html += `
+        <div class="collection-card locked">
+          <div class="ck-glyph">封</div>
+          <div class="ck-name">${y.name}</div>
+          <div class="ck-dist">${progText}</div>
         </div>`;
       return;
     }
