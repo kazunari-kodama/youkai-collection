@@ -1084,6 +1084,7 @@ async function clearTakusen() {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error(await res.text());
+    _clearTakusenGlow();
     showToast('託宣クリア完了');
   } catch (e) {
     showToast('クリアに失敗しました: ' + e.message);
@@ -2478,8 +2479,9 @@ async function activateKitoshiTakusen() {
       const d = res.data;
       const h = Math.max(0, Math.round((new Date(d?.expires_at) - Date.now()) / 3600000));
       showToast(`託宣発動中（残り約${h}時間）`);
-      if (d?.lat != null && state.playerPos) {
-        _animateTakusenSonar(state.playerPos.lat, state.playerPos.lon, d.lat, d.lon, d.youkai_id);
+      if (d?.lat != null) {
+        if (state.playerPos) _animateTakusenSonar(state.playerPos.lat, state.playerPos.lon, d.lat, d.lon, d.youkai_id);
+        _showTakusenGlow(d.lat, d.lon);
       }
     } else showToast('託宣失敗: ' + (res.data?.error ?? 'エラー'));
     return;
@@ -2527,6 +2529,21 @@ function _animateTakusenSonar(fromLat, fromLon, toLat, toLon, youkaiId) {
   setTimeout(() => _flashTakusenMarker(toLat, toLon, youkaiId), duration);
 }
 
+let _takusenGlow = null;
+
+function _showTakusenGlow(lat, lon) {
+  _clearTakusenGlow();
+  _takusenGlow = L.circle([lat, lon], {
+    radius: 25, color: '#d4b96a', fillColor: '#d4b96a',
+    fillOpacity: 0.18, opacity: 0.65, weight: 2, dashArray: '6 5',
+  }).addTo(map);
+  _takusenGlow.bindPopup('<div style="font-size:12px;text-align:center;">🔮 託宣の地<br><small>封印試行回数 -2</small></div>');
+}
+
+function _clearTakusenGlow() {
+  if (_takusenGlow) { map.removeLayer(_takusenGlow); _takusenGlow = null; }
+}
+
 function _flashTakusenMarker(lat, lon, youkaiId) {
   // 既存マーカーがロード済みなら CSS アニメも付与
   const el = youkaiMarkers[youkaiId]?.marker?.getElement?.();
@@ -2535,8 +2552,8 @@ function _flashTakusenMarker(lat, lon, youkaiId) {
     setTimeout(() => el.classList.remove('takusen-found'), 4000);
   }
 
-  // マーカー有無に関わらず座標にパルス円を表示
-  const glow = L.circle([lat, lon], {
+  // パルス円（10回明滅後に持続円へ移行）
+  const pulse = L.circle([lat, lon], {
     radius: 30, color: '#d4b96a', fillColor: '#d4b96a',
     fillOpacity: 0.45, opacity: 0.9, weight: 3,
   }).addTo(map);
@@ -2544,11 +2561,15 @@ function _flashTakusenMarker(lat, lon, youkaiId) {
   let tick = 0;
   const iv = setInterval(() => {
     tick++;
-    glow.setStyle({
+    pulse.setStyle({
       opacity:     tick % 2 === 0 ? 0.9 : 0.15,
       fillOpacity: tick % 2 === 0 ? 0.45 : 0.05,
     });
-    if (tick >= 10) { clearInterval(iv); map.removeLayer(glow); }
+    if (tick >= 10) {
+      clearInterval(iv);
+      map.removeLayer(pulse);
+      _showTakusenGlow(lat, lon);
+    }
   }, 400);
 }
 
