@@ -1349,9 +1349,40 @@ async function refreshGlobalStats() {
 function handleBadgeClick() {
   if (state.debugMode) {
     toggleDebugRolePanel();
-  } else {
-    showRoleQuiz();
+    return;
   }
+  // 初回（職業未選択）は警告なしで診断へ
+  if (!currentRole) {
+    showRoleQuiz();
+    return;
+  }
+  // 職業の選び直しは全進捗リセットを伴うため警告
+  const ok = confirm(
+    '職業を選び直すと、これまでの歩みがすべて失われます。\n\n' +
+    '・封印した妖怪（図鑑）\n' +
+    '・結界石・結界\n' +
+    '・積んだ石・祈祷・術の状態\n' +
+    '・ランクと経験値\n\n' +
+    'すべてリセットされます。本当によろしいですか？'
+  );
+  if (!ok) return;
+  _resetAllProgressAndReselect();
+}
+
+async function _resetAllProgressAndReselect() {
+  showToast('これまでの記録を消去しています…');
+  try {
+    const res = await fetch(`${API_BASE_URL}/player/reset?deviceId=${encodeURIComponent(DEVICE_ID)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+  } catch (e) {
+    showToast('リセットに失敗しました: ' + e.message);
+    return;
+  }
+  // ロール情報を消してリロードし、初回フロー（職業診断）を出す
+  localStorage.removeItem(ROLE_KEY);
+  localStorage.removeItem(FACTION_KEY);
+  localStorage.removeItem('curse_expires_at');
+  location.reload();
 }
 
 function toggleDebugRolePanel() {

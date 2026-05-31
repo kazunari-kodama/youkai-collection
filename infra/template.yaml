@@ -480,6 +480,41 @@ Resources:
             Path: /capture
             Method: POST
 
+  # Lambda: DELETE /player/reset (職業選び直し: 全進捗リセット)
+  ResetPlayerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints: [src/handlers/resetPlayer.ts]
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/resetPlayer.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:BatchWriteItem]
+              Resource:
+                - !GetAtt CapturesTable.Arn
+                - !GetAtt KekkaiStonesTable.Arn
+                - !GetAtt KekkaiBarriersTable.Arn
+                - !GetAtt YamabushiStonesTable.Arn
+                - !GetAtt KitoshiPrayersTable.Arn
+                - !GetAtt ShoujutsuTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:DeleteItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /player/reset
+            Method: DELETE
+
   # Lambda: GET /stats/global
   GetGlobalStatsFunction:
     Type: AWS::Serverless::Function
