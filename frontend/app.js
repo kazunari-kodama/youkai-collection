@@ -2524,16 +2524,32 @@ function _animateTakusenSonar(fromLat, fromLon, toLat, toLon, youkaiId) {
   });
 
   // ソナー到達時にマーカーをフラッシュ
-  setTimeout(() => _flashTakusenMarker(youkaiId), duration);
+  setTimeout(() => _flashTakusenMarker(toLat, toLon, youkaiId), duration);
 }
 
-function _flashTakusenMarker(youkaiId) {
-  const entry = youkaiMarkers[youkaiId];
-  if (!entry) return;
-  const el = entry.marker?.getElement?.();
-  if (!el) return;
-  el.classList.add('takusen-found');
-  setTimeout(() => el.classList.remove('takusen-found'), 4000);
+function _flashTakusenMarker(lat, lon, youkaiId) {
+  // 既存マーカーがロード済みなら CSS アニメも付与
+  const el = youkaiMarkers[youkaiId]?.marker?.getElement?.();
+  if (el) {
+    el.classList.add('takusen-found');
+    setTimeout(() => el.classList.remove('takusen-found'), 4000);
+  }
+
+  // マーカー有無に関わらず座標にパルス円を表示
+  const glow = L.circle([lat, lon], {
+    radius: 30, color: '#d4b96a', fillColor: '#d4b96a',
+    fillOpacity: 0.45, opacity: 0.9, weight: 3,
+  }).addTo(map);
+
+  let tick = 0;
+  const iv = setInterval(() => {
+    tick++;
+    glow.setStyle({
+      opacity:     tick % 2 === 0 ? 0.9 : 0.15,
+      fillOpacity: tick % 2 === 0 ? 0.45 : 0.05,
+    });
+    if (tick >= 10) { clearInterval(iv); map.removeLayer(glow); }
+  }, 400);
 }
 
 function _checkPrayerProximity(lat, lon) {
