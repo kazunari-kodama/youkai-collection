@@ -23,6 +23,7 @@ document.getElementById('btn-debug').style.display = IS_DEV ? '' : 'none';
 document.getElementById('btn-clear-collection').style.display = IS_DEV ? '' : 'none';
 document.getElementById('btn-clear-kekkai').style.display = IS_DEV ? '' : 'none';
 document.getElementById('btn-clear-takusen').style.display = IS_DEV ? '' : 'none';
+
 const AIZU_CASTLE = { lat: 37.4946, lon: 139.9293 };
 const TOKYO_STATION = { lat: 35.6812, lon: 139.7671 };
 
@@ -342,6 +343,7 @@ function updatePlayerPosition(lat, lon) {
   _onWalkPosition(lat, lon);
   state.playerPos = { lat, lon };
   _checkPrayerProximity(lat, lon);
+  _checkCleanse(lat, lon);
   if (!state.initialCentered) {
     state.initialCentered = true;
     map.setView([lat, lon], 16);
@@ -592,6 +594,14 @@ async function confirmCapture() {
     showToast(isSupernatural
       ? `${rankLabel}「${detail.name}」と共存の契りを結んだ`
       : `${rankLabel}「${detail.name}」を図鑑に封じた`);
+
+    if (resData.curse_applied) {
+      const until = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+      _curseExpiresAt = until;
+      localStorage.setItem('curse_expires_at', until);
+      _updateCurseHUD();
+      setTimeout(() => showToast('🔮 呪われた…！\nスキル使用時に術力が全消費される（24時間）\n祈祷・結界エリアで解呪できる', 4000), 1500);
+    }
   }
 }
 
@@ -1715,6 +1725,7 @@ const SKILL_DEFS = {
     { id: 'omikuji',  name: 'おみくじ', desc: '神意を問い、運命を引く。1日1回のみ。大吉〜大凶まで5種。', locationBased: false },
   ],
   yojutsushi: [
+    { id: 'noroi',     name: '呪術',     desc: '術力15を消費して解除済み妖怪に呪いを施す（7日間）。その妖怪を封印した払い手は術力全消費の呪いを24時間受ける。祈祷・結界エリアで解呪。', locationBased: false },
     { id: 'reveal',    name: '妖眼',     desc: '妖術の眼で妖怪の真の姿・伝承・出没地を看破する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   yamabushi: [
@@ -1731,7 +1742,7 @@ const SKILL_DEFS = {
 
 const ROLE_JOB = {
   onmyoji: 'onmyoji', kitoshi: 'kitoshi', miko: 'miko',
-  yojutsushi: null, yamabushi: 'yamabushi', jujutsushi: 'jujutsushi',
+  yojutsushi: 'yojutsushi', yamabushi: 'yamabushi', jujutsushi: 'jujutsushi',
 };
 
 function _currentJob() {
@@ -1745,6 +1756,7 @@ function _initSkillUI() {
   _loadAragami();
   _loadYamabushiStones();
   _loadKitoshiPrayers();
+  _updateCurseHUD();
   const job = _currentJob();
   if (job === 'onmyoji') {
     _loadKekkaiStones();
@@ -1788,6 +1800,8 @@ function openSkillPanel() {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiTraversal()">踏破率を確認する</button>`;
     } else if (sk.id === 'yamabushi_stone') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiStone()">現在地に石を積む</button>`;
+    } else if (sk.id === 'noroi') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();openCollectionForSkill('noroi')">解除済み妖怪を選ぶ</button>`;
     } else if (sk.id === 'inori') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKitoshiPrayer()">現在地で祈祷する</button>`;
     } else if (sk.id === 'takusen') {
@@ -2208,6 +2222,9 @@ openCollection = function(skillId = null) {
         ? `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px" disabled>荒魂化済</button>`
         : `<button class="skill-action-btn juju-btn" style="margin-top:4px;font-size:10px;padding:5px"
             onclick="event.stopPropagation();activateTamafuri('${y.id}')">魂を振る</button>`;
+    } else if (skillId === 'noroi' && actionType === 'release' && job === 'yojutsushi') {
+      skillBtn = `<button class="skill-action-btn" style="margin-top:4px;font-size:10px;padding:5px;background:#4a1a4a;border-color:#8b2fc9;color:#e0c0ff;"
+        onclick="event.stopPropagation();activateNoroi('${y.id}')">呪術を施す</button>`;
     }
 
     // bond 未解明は名前を隠す
@@ -2622,6 +2639,43 @@ function _checkPrayerProximity(lat, lon) {
       _receivedPrayerIds.add(p.prayer_id);
       _applyPrayerEffect(p.deviceId, p.prayer_id, faction);
     }
+  }
+}
+
+// ---- 妖術師: 呪術 ------------------------------------------
+let _curseExpiresAt  = localStorage.getItem('curse_expires_at') ?? null;
+let _lastCleanseTry  = 0;
+
+function _updateCurseHUD() {
+  const active = _curseExpiresAt && new Date(_curseExpiresAt) > new Date();
+  const badge  = document.getElementById('curse-badge');
+  if (badge) badge.style.display = active ? '' : 'none';
+}
+
+async function activateNoroi(youkaiId) {
+  const res = await apiPost('/skill/yojutsushi/noroi', { deviceId: DEVICE_ID, youkaiId });
+  if (!res.ok) {
+    if (res.status === 402) showToast(`術力不足（必要: ${res.data?.required ?? 15}）`);
+    else if (res.status === 403) showToast('妖術師のみ使用可能');
+    else if (res.status === 409) showToast('解除済みの妖怪にのみ呪術を施せます');
+    else showToast('呪術失敗: ' + (res.data?.error ?? 'エラー'));
+    return;
+  }
+  showSkillResult('呪 術', `呪いを施した。\n\nこの妖怪を封印した払い手は\n24時間、術力が全消費される。\n\n術力残: ${res.data.jutsuriyoku}`);
+  if (_activeSkillId) openCollection(_activeSkillId);
+}
+
+async function _checkCleanse(lat, lon) {
+  if (!_curseExpiresAt || new Date(_curseExpiresAt) <= new Date()) return;
+  if (Date.now() - _lastCleanseTry < 15000) return;
+  _lastCleanseTry = Date.now();
+
+  const res = await apiPost('/skill/cleanse', { deviceId: DEVICE_ID, userLat: lat, userLon: lon });
+  if (res.ok && res.data?.cleansed) {
+    _curseExpiresAt = null;
+    localStorage.removeItem('curse_expires_at');
+    _updateCurseHUD();
+    showToast('🕊️ 呪いが解けた');
   }
 }
 

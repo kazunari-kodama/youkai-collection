@@ -1,11 +1,11 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, KEKKAI_BARRIERS_TABLE, ARAGAMI_TABLE } from '../lib/dynamodb';
+import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, KEKKAI_BARRIERS_TABLE, ARAGAMI_TABLE, NOROI_CURSES_TABLE } from '../lib/dynamodb';
 import { isInsideAnyBarrier } from '../lib/geometry';
 import { distanceMeters } from '../lib/distance';
 import { deductJutsu } from '../lib/jutsuriyoku';
 import type { YokaiDBItem } from '../types/youkai';
-import { YOURYOKU_RANKS, JUTSU_COST, rankBeatsYouryoku } from '../types/skill';
+import { YOURYOKU_RANKS, JUTSU_COST, rankBeatsYouryoku, NOROI_EFFECT_HOURS } from '../types/skill';
 
 const CAPTURE_RADIUS_M = 13;
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
@@ -234,12 +234,33 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   await ddb.send(new PutCommand({ TableName: CAPTURES_TABLE, Item: sealItem }));
   updatePlayerProfile(deviceId, faction, rankInfo.exp, body.job).catch(e => console.error('profile update failed', e));
 
+  // 呪い判定: 払い手が呪われた妖怪を封印した場合
+  let curseApplied = false;
+  if (faction === 'exorcist') {
+    const noroiRes = await ddb.send(new GetCommand({
+      TableName: NOROI_CURSES_TABLE,
+      Key: { youkai_id: youkaiId },
+      ProjectionExpression: 'expires_at',
+    }));
+    if (noroiRes.Item && (noroiRes.Item.expires_at as string) > now) {
+      const curseUntil = new Date(Date.now() + NOROI_EFFECT_HOURS * 3600 * 1000).toISOString();
+      await ddb.send(new UpdateCommand({
+        TableName: PLAYER_PROFILE_TABLE,
+        Key: { deviceId },
+        UpdateExpression: 'SET curse_expires_at = :c',
+        ExpressionAttributeValues: { ':c': curseUntil },
+      }));
+      curseApplied = true;
+    }
+  }
+
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
     success: true, sealed: true, progress: required, required, youryoku,
     rank_name: rankInfo.name, exp_gained: rankInfo.exp,
     kekkai_bonus: kekkaiBonus, nigitama_bonus: nigitamaBonus,
     chukichi_bonus: chukichiBonus, aragami_debuff: isAragami,
     yamabushi_bonus: yamabushiBonus > 0 ? yamabushiBonus : undefined,
+    curse_applied: curseApplied || undefined,
   })};
 };
 

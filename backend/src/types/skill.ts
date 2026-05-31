@@ -13,7 +13,8 @@ export type SkillId =
   | 'yamabushi_traversal' // 山伏: 踏破視覚化
   | 'yamabushi_stone'     // 山伏: 石積み
   | 'inori'               // 祈祷師: 祈り
-  | 'takusen';            // 祈祷師: 託宣
+  | 'takusen'             // 祈祷師: 託宣
+  | 'noroi';              // 妖術師: 呪術
 
 export const JOB_SKILLS: Partial<Record<JobId, SkillId[]>> = {
   onmyoji:    ['dokaishu', 'shikigami', 'kekkai', 'hisho_shikigami'],
@@ -21,6 +22,7 @@ export const JOB_SKILLS: Partial<Record<JobId, SkillId[]>> = {
   miko:       ['chinkon', 'omikuji'],
   yamabushi:  ['yamabushi_traversal', 'yamabushi_stone'],
   kitoshi:    ['inori', 'takusen'],
+  yojutsushi: ['noroi'],
 };
 
 export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: number }> = {
@@ -37,6 +39,7 @@ export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: 
   yamabushi_stone:    { name: '石積み',     desc: '術力を消費して現在地に石を積む。踏破の目印となる', rangeM: 0 },
   inori:              { name: '祈祷',       desc: '術力を消費して現在地に祈りを捧げる。半径40m内を通った者に2時間の祈祷効果が宿る', rangeM: 40 },
   takusen:            { name: '託宣',       desc: '術力を消費して神意を問う。半径10km内の未封印妖怪1体がランダムに選ばれ、試行回数-2の加護が24時間宿る', rangeM: 10000 },
+  noroi:              { name: '呪術',       desc: '術力を消費して解除済み妖怪に呪いを施す。封印した払い手ユーザーはスキル使用時に術力が全消費される（24時間）。祈祷・結界エリアで解呪' },
 };
 
 export const RANK_SHIKIGAMI_SLOTS: Record<string, number> = {
@@ -83,6 +86,7 @@ export const JUTSU_COST = {
   skill_yamabushi_stone:    5,
   skill_kitoshi_prayer:    10,
   skill_kitoshi_takusen:   20,
+  skill_yojutsushi_noroi:  15,
 } as const;
 
 export const RANK_JUTSU_MAX: Record<string, number> = {
@@ -164,6 +168,8 @@ export interface AragamiDBItem {
 
 // ---- 祈祷師定数 ----
 export const PRAYER_RADIUS_M       = 40;
+export const NOROI_DURATION_DAYS   = 7;
+export const NOROI_EFFECT_HOURS    = 24;
 export const PRAYER_DURATION_HOURS = 48;
 export const PRAYER_EFFECT_HOURS   = 2;
 

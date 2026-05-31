@@ -47,12 +47,12 @@ export async function deductJutsu(
   deviceId: string,
   cost: number,
   debug = false,
-): Promise<{ ok: boolean; current: number; max: number }> {
+): Promise<{ ok: boolean; current: number; max: number; curse_triggered?: boolean }> {
   const res = await ddb.send(new GetCommand({
     TableName: PLAYER_PROFILE_TABLE,
     Key: { deviceId },
   }));
-  const profile = (res.Item ?? {}) as Partial<JutsuProfile>;
+  const profile = (res.Item ?? {}) as Partial<JutsuProfile> & { curse_expires_at?: string };
   const current = calcCurrentJutsu(profile);
   const max     = maxJutsu(profile.rank ?? 'C');
 
@@ -60,7 +60,12 @@ export async function deductJutsu(
 
   if (current < cost) return { ok: false, current, max };
 
-  const newValue = current - cost;
+  // 呪い判定: 呪われている場合は全消費
+  const nowIso       = new Date().toISOString();
+  const isCursed     = !!(profile.curse_expires_at && profile.curse_expires_at > nowIso);
+  const effectiveCost = isCursed ? current : cost;
+
+  const newValue = current - effectiveCost;
   const now      = new Date().toISOString();
   await ddb.send(new UpdateCommand({
     TableName: PLAYER_PROFILE_TABLE,
@@ -74,7 +79,7 @@ export async function deductJutsu(
     },
   }));
 
-  return { ok: true, current: newValue, max };
+  return { ok: true, current: newValue, max, ...(isCursed ? { curse_triggered: true } : {}) };
 }
 
 /** 歩行距離を加算し DynamoDB を更新する。術力の再計算は次回アクセス時に遅延計算。 */

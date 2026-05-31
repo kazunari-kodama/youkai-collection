@@ -35,6 +35,7 @@ Globals:
         KEKKAI_BARRIERS_TABLE:  !Ref KekkaiBarriersTable
         YAMABUSHI_STONES_TABLE: !Ref YamabushiStonesTable
         KITOSHI_PRAYERS_TABLE:  !Ref KitoshiPrayersTable
+        NOROI_CURSES_TABLE:     !Ref NoroiCursesTable
 
 Resources:
   # API Gateway
@@ -293,6 +294,24 @@ Resources:
           KeyType: HASH
         - AttributeName: stone_id
           KeyType: RANGE
+
+  # NoroiCurses Table (妖術師: 呪術)
+  NoroiCursesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-noroi-curses
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: youkai_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: youkai_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
   # KitoshiPrayers Table (祈祷師: 祈り)
   KitoshiPrayersTable:
@@ -1914,6 +1933,72 @@ Resources:
           Properties:
             RestApiId: !Ref YokaiApi
             Path: /skill/kitoshi/prayer/receive
+            Method: POST
+
+  # Lambda: POST /skill/yojutsushi/noroi (妖術師: 呪術)
+  SkillYojutsushiNoroiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillYojutsushiNoroi.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYojutsushiNoroi.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:PutItem]
+              Resource: !GetAtt NoroiCursesTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yojutsushi/noroi
+            Method: POST
+
+  # Lambda: POST /skill/cleanse (解呪)
+  SkillCleanseFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/skillCleanse.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillCleanse.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !GetAtt KitoshiPrayersTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !GetAtt KekkaiBarriersTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/cleanse
             Method: POST
 
   # Lambda: GET /skill/yamabushi/stones (全員: 石一覧)

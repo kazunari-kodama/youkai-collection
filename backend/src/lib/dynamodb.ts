@@ -16,6 +16,7 @@ export const KEKKAI_STONES_TABLE     = process.env.KEKKAI_STONES_TABLE!;
 export const KEKKAI_BARRIERS_TABLE    = process.env.KEKKAI_BARRIERS_TABLE!;
 export const YAMABUSHI_STONES_TABLE   = process.env.YAMABUSHI_STONES_TABLE!;
 export const KITOSHI_PRAYERS_TABLE    = process.env.KITOSHI_PRAYERS_TABLE!;
+export const NOROI_CURSES_TABLE       = process.env.NOROI_CURSES_TABLE!;
 
 /** images[0] → camera URL
  *  "youkai/xxx_camera.png"  → "{base}/youkai/xxx_camera.png"  (direct key, new format)
