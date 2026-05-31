@@ -498,7 +498,13 @@ async function triggerUnseal(youkaiId) {
 
   const isSupernatural = currentFaction === 'supernatural';
   document.getElementById('unseal-headline').textContent = isSupernatural ? '妖 怪 共 存' : '封 印 解 除';
-  talisman.textContent = isSupernatural ? '召' : '封';
+  if (isSupernatural) {
+    talisman.innerHTML = '召';
+    talisman.classList.remove('has-image');
+  } else {
+    talisman.innerHTML = `<img class="talisman-img" id="talisman-img" src="assets/images/seal/ofuda-seal.png" alt="封">`;
+    talisman.classList.add('has-image');
+  }
   talisman.classList.toggle('supernatural', isSupernatural);
 
   document.getElementById('unseal-name').textContent = detail.name;
@@ -521,6 +527,10 @@ async function triggerUnseal(youkaiId) {
 
   requestAnimationFrame(() => {
     talisman.classList.add('breaking');
+    if (!isSupernatural) {
+      const timg = document.getElementById('talisman-img');
+      if (timg) setTimeout(() => { timg.src = 'assets/images/seal/ofuda-break.png'; }, 200);
+    }
     nameEl.classList.add('appear');
   });
 }
