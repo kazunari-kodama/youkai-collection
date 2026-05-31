@@ -498,13 +498,10 @@ async function triggerUnseal(youkaiId) {
 
   const isSupernatural = currentFaction === 'supernatural';
   document.getElementById('unseal-headline').textContent = isSupernatural ? '妖 怪 共 存' : '封 印 解 除';
-  if (isSupernatural) {
-    talisman.innerHTML = '召';
-    talisman.classList.remove('has-image');
-  } else {
-    talisman.innerHTML = `<img class="talisman-img" id="talisman-img" src="assets/images/seal/ofuda-seal.png" alt="封">`;
-    talisman.classList.add('has-image');
-  }
+  // 初期表示は両者共通の破れ札（封印が緩んだ未解除状態）
+  talisman.classList.remove('breaking', 'sealing');
+  talisman.innerHTML = `<img class="talisman-img" id="talisman-img" src="assets/images/seal/ofuda-break.png" alt="${isSupernatural ? '召喚' : '封印'}">`;
+  talisman.classList.add('has-image');
   talisman.classList.toggle('supernatural', isSupernatural);
 
   document.getElementById('unseal-name').textContent = detail.name;
@@ -526,10 +523,15 @@ async function triggerUnseal(youkaiId) {
   document.getElementById('unseal-modal').classList.add('show');
 
   requestAnimationFrame(() => {
-    talisman.classList.add('breaking');
-    if (!isSupernatural) {
-      const timg = document.getElementById('talisman-img');
-      if (timg) setTimeout(() => { timg.src = 'assets/images/seal/ofuda-break.png'; }, 200);
+    const timg = document.getElementById('talisman-img');
+    if (isSupernatural) {
+      // 招き手: 破れ目から弾けて妖怪が現れる（召喚）
+      if (timg) timg.src = 'assets/images/seal/ofuda-summon-active.png';
+      talisman.classList.add('breaking');
+    } else {
+      // 払い手: 破れた封印を封じ直し、封の札が光って封印成立
+      if (timg) timg.src = 'assets/images/seal/ofuda-seal.png';
+      talisman.classList.add('sealing');
     }
     nameEl.classList.add('appear');
   });
