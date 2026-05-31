@@ -1212,7 +1212,7 @@ html, body {
 .drp-name {
   font-family: 'Noto Serif JP', serif;
   font-size: 13px;
-  color: var(--paper-light);
+  color: var(--paper);
   flex: 1;
 }
 .drp-faction {
