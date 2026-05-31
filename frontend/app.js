@@ -2118,7 +2118,14 @@ async function activateReveal(youkaiId) {
 
 // ---- 魂振 (コレクション: 解除済み妖怪から発動) ---------------
 async function activateTamafuri(youkaiId) {
-  const res = await apiPost('/skill/tamafuri', { deviceId: DEVICE_ID, youkaiId });
+  let res;
+  try {
+    res = await apiPost('/skill/tamafuri', { deviceId: DEVICE_ID, youkaiId });
+  } catch (e) {
+    console.error('tamafuri error', e);
+    showToast('魂振失敗: サーバーに接続できません');
+    return;
+  }
   if (!res.ok) {
     const errMap = {
       'Jujutsushi only':        '呪術師のみ発動できる',
