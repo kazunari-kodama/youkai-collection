@@ -1967,6 +1967,14 @@ html, body {
 }
 .leaflet-marker-icon { overflow: visible !important; }
 
+/* 百鬼夜行ヒットエフェクト */
+@keyframes hyakki-pulse {
+  0%   { filter: drop-shadow(0 0  0px rgba(154,46,255,0)); }
+  40%  { filter: drop-shadow(0 0 20px rgba(154,46,255,1)); }
+  100% { filter: drop-shadow(0 0  0px rgba(154,46,255,0)); }
+}
+.hyakki-hit { animation: hyakki-pulse 0.8s ease-out 2; }
+
 /* 託宣ヒットエフェクト */
 @keyframes takusen-pulse {
   0%   { filter: drop-shadow(0 0  0px rgba(212,185,106,0)); }

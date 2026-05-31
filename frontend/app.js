@@ -315,6 +315,11 @@ async function handleMarkerTap(youkai) {
     await _launchHishoTo(youkai.id);
     return;
   }
+  // 召喚術モード中はこのマーカーを目標に発動
+  if (_shoujutsuMode) {
+    await launchShoujutsu(youkai.id);
+    return;
+  }
   if (capturedIds.has(youkai.id)) {
     await showDetail(youkai.id);
     return;
@@ -1725,8 +1730,10 @@ const SKILL_DEFS = {
     { id: 'omikuji',  name: 'おみくじ', desc: '神意を問い、運命を引く。1日1回のみ。大吉〜大凶まで5種。', locationBased: false },
   ],
   yojutsushi: [
-    { id: 'noroi',     name: '呪術',     desc: '術力15を消費して解除済み妖怪に呪いを施す（7日間）。その妖怪を封印した払い手は術力全消費の呪いを24時間受ける。祈祷・結界エリアで解呪。', locationBased: false },
-    { id: 'reveal',    name: '妖眼',     desc: '妖術の眼で妖怪の真の姿・伝承・出没地を看破する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
+    { id: 'noroi',       name: '呪術',     desc: '術力15を消費して解除済み妖怪に呪いを施す（7日間）。その妖怪を封印した払い手は術力全消費の呪いを24時間受ける。祈祷・結界エリアで解呪。', locationBased: false },
+    { id: 'shoujutsu',   name: '召喚術',   desc: '解除済み妖怪を召喚し、射程（所持数×10m）内の遠方妖怪を封印試行する。距離1km=5分で到達。', locationBased: false },
+    { id: 'hyakki_yagyo', name: '百鬼夜行', desc: '【SSランク限定】術力50消費。解除妖怪数×100mの範囲内全妖怪に封印を試行する大技。', locationBased: false },
+    { id: 'reveal',      name: '妖眼',     desc: '妖術の眼で妖怪の真の姿・伝承・出没地を看破する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
   ],
   yamabushi: [
     { id: 'reveal',               name: '験視',       desc: '山岳修行で得た験力で妖怪の真名・伝承・出没地を見抜く。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
@@ -1757,6 +1764,7 @@ function _initSkillUI() {
   _loadYamabushiStones();
   _loadKitoshiPrayers();
   _updateCurseHUD();
+  if (currentRole === 'yojutsushi') _startShoujutsuTimer();
   const job = _currentJob();
   if (job === 'onmyoji') {
     _loadKekkaiStones();
@@ -1802,6 +1810,10 @@ function openSkillPanel() {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateYamabushiStone()">現在地に石を積む</button>`;
     } else if (sk.id === 'noroi') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();openCollectionForSkill('noroi')">解除済み妖怪を選ぶ</button>`;
+    } else if (sk.id === 'shoujutsu') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();openCollectionForSkill('shoujutsu')">召喚する妖怪を選ぶ</button>`;
+    } else if (sk.id === 'hyakki_yagyo') {
+      actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateHyakkiYagyo()">百 鬼 夜 行</button>`;
     } else if (sk.id === 'inori') {
       actionBtn = `<button class="skill-action-btn ${isBtnColor}" onclick="closeSkillPanel();activateKitoshiPrayer()">現在地で祈祷する</button>`;
     } else if (sk.id === 'takusen') {
@@ -2225,6 +2237,9 @@ openCollection = function(skillId = null) {
     } else if (skillId === 'noroi' && actionType === 'release' && job === 'yojutsushi') {
       skillBtn = `<button class="skill-action-btn" style="margin-top:4px;font-size:10px;padding:5px;background:#4a1a4a;border-color:#8b2fc9;color:#e0c0ff;"
         onclick="event.stopPropagation();activateNoroi('${y.id}')">呪術を施す</button>`;
+    } else if (skillId === 'shoujutsu' && actionType === 'release' && job === 'yojutsushi') {
+      skillBtn = `<button class="skill-action-btn" style="margin-top:4px;font-size:10px;padding:5px;background:#1a2a4a;border-color:#4a7cc9;color:#c0d8ff;"
+        onclick="event.stopPropagation();selectShoujutsuSummon('${y.id}')">この妖怪を召喚</button>`;
     }
 
     // bond 未解明は名前を隠す
@@ -2663,6 +2678,141 @@ async function activateNoroi(youkaiId) {
   }
   showSkillResult('呪 術', `呪いを施した。\n\nこの妖怪を封印した払い手は\n24時間、術力が全消費される。\n\n術力残: ${res.data.jutsuriyoku}`);
   if (_activeSkillId) openCollection(_activeSkillId);
+}
+
+// ---- 妖術師: 召喚術 ------------------------------------------
+let _shoujutsuSummonId   = null;
+let _shoujutsuMode       = false;
+let _shoujutsuTimerInterval = null;
+
+function selectShoujutsuSummon(youkaiId) {
+  _shoujutsuSummonId = youkaiId;
+  closeCollection();
+  _shoujutsuMode = true;
+  showToast('召喚術: 地図上の目標妖怪をタップしてください\n（射程 = 所持妖怪数 × 10m）');
+  // オーバーレイ表示
+  const ov = document.getElementById('shoujutsu-overlay');
+  if (ov) ov.style.display = 'flex';
+}
+
+function cancelShoujutsuMode() {
+  _shoujutsuMode = false;
+  _shoujutsuSummonId = null;
+  const ov = document.getElementById('shoujutsu-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
+async function launchShoujutsu(targetYoukaiId) {
+  if (!_shoujutsuSummonId || !state.playerPos) return;
+  cancelShoujutsuMode();
+  showToast('召喚術を発動中…');
+  const res = await apiPost('/skill/yojutsushi/shoujutsu', {
+    deviceId:         DEVICE_ID,
+    summonedYoukaiId: _shoujutsuSummonId,
+    targetYoukaiId,
+    userLat: state.playerPos.lat,
+    userLon: state.playerPos.lon,
+  });
+  if (!res.ok) {
+    if (res.status === 402) showToast(`術力不足（必要: 20）`);
+    else if (res.status === 403) {
+      const d = res.data;
+      if (d?.range_m != null) showToast(`射程外（距離${Math.round(d.distance_m)}m / 射程${d.range_m}m）\n所持妖怪を増やすと射程が伸びます`);
+      else showToast('妖術師のみ使用可能');
+    }
+    else if (res.status === 409) showToast('すでに召喚中の妖怪がいます');
+    else showToast('召喚術失敗: ' + (res.data?.error ?? 'エラー'));
+    return;
+  }
+  const d = res.data;
+  showToast(`妖怪を召喚しました。\n${d.flight_minutes}分後に到達します`);
+  _startShoujutsuTimer();
+}
+
+async function _startShoujutsuTimer() {
+  if (_shoujutsuTimerInterval) clearInterval(_shoujutsuTimerInterval);
+  _shoujutsuTimerInterval = setInterval(async () => {
+    const listRes = await apiGet(`/skill/yojutsushi/shoujutsu?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
+    if (!listRes) return;
+    for (const item of (listRes.summons ?? [])) {
+      if (new Date(item.arrives_at) <= new Date()) {
+        const arrRes = await apiPost('/skill/yojutsushi/shoujutsu/arrive', {
+          deviceId: DEVICE_ID, shoujutsuId: item.shoujutsu_id,
+        });
+        if (arrRes.ok) {
+          clearInterval(_shoujutsuTimerInterval);
+          _shoujutsuTimerInterval = null;
+          if (arrRes.data.sealed) {
+            showSkillResult('召 喚 術', `召喚した妖怪が封印を完了！\n（EXP +${arrRes.data.exp_gained}）`);
+            const entry = youkaiMarkers[arrRes.data.target_youkai_id];
+            if (entry) refreshMarker(arrRes.data.target_youkai_id);
+          } else if (arrRes.data.success) {
+            showToast(`召喚術: 封印進行中（${arrRes.data.progress}/${arrRes.data.required}）`);
+          } else {
+            showToast(`召喚術: ${arrRes.data.reason === 'already_captured' ? 'すでに封印済みでした' : '到達しました'}`);
+          }
+        }
+      }
+    }
+    if (!(listRes.summons?.length)) {
+      clearInterval(_shoujutsuTimerInterval);
+      _shoujutsuTimerInterval = null;
+    }
+  }, 10000);
+}
+
+// ---- 妖術師: 百鬼夜行 ----------------------------------------
+async function activateHyakkiYagyo() {
+  if (!state.playerPos) { showToast('現在地が取得できません'); return; }
+  if (!confirm('百鬼夜行を発動しますか？（術力50消費）')) return;
+  showToast('百鬼夜行 発動中…');
+  const res = await apiPost('/skill/yojutsushi/hyakki-yagyo', {
+    deviceId: DEVICE_ID, userLat: state.playerPos.lat, userLon: state.playerPos.lon,
+  });
+  if (!res.ok) {
+    if (res.status === 402) showToast(`術力不足（必要: 50）`);
+    else if (res.status === 403) showToast(res.data?.error === 'SS rank required' ? 'SSランク限定スキルです' : '妖術師のみ使用可能');
+    else if (res.status === 400) showToast('解除済み妖怪がいないため射程がありません');
+    else showToast('百鬼夜行失敗: ' + (res.data?.error ?? 'エラー'));
+    return;
+  }
+  const d = res.data;
+  _animateHyakkiYagyo(state.playerPos.lat, state.playerPos.lon, d.range_m, d.results ?? []);
+  showSkillResult(
+    '百 鬼 夜 行',
+    `百鬼夜行が${d.range_m.toLocaleString()}mの範囲を席巻した。\n\n影響: ${d.affected}体 / 封印: ${d.sealed_count}体\nEXP +${d.exp_gained}\n\n術力残: ${d.jutsuriyoku}`,
+  );
+}
+
+function _animateHyakkiYagyo(lat, lon, rangeM, results) {
+  const duration = Math.max(2000, Math.min(5000, rangeM / 50));
+  const ring = L.circle([lat, lon], {
+    radius: 0, color: '#6a0dad', fillColor: '#9b2eff',
+    fillOpacity: 0.08, opacity: 0.8, weight: 3, interactive: false,
+  }).addTo(map);
+
+  const start = performance.now();
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / duration);
+    ring.setRadius(t * rangeM);
+    ring.setStyle({ opacity: 0.8 * (1 - t * 0.6) });
+    if (t < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      setTimeout(() => map.removeLayer(ring), 800);
+      // 影響を受けた妖怪にフラッシュ
+      results.forEach((r) => {
+        const entry = youkaiMarkers[r.youkai_id];
+        if (!entry) return;
+        const el = entry.marker?.getElement?.();
+        if (el) {
+          el.classList.add('hyakki-hit');
+          setTimeout(() => el.classList.remove('hyakki-hit'), 2000);
+        }
+      });
+    }
+  };
+  requestAnimationFrame(tick);
 }
 
 async function _checkCleanse(lat, lon) {

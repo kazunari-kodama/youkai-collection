@@ -36,6 +36,7 @@ Globals:
         YAMABUSHI_STONES_TABLE: !Ref YamabushiStonesTable
         KITOSHI_PRAYERS_TABLE:  !Ref KitoshiPrayersTable
         NOROI_CURSES_TABLE:     !Ref NoroiCursesTable
+        SHOUJUTSU_TABLE:        !Ref ShoujutsuTable
 
 Resources:
   # API Gateway
@@ -294,6 +295,28 @@ Resources:
           KeyType: HASH
         - AttributeName: stone_id
           KeyType: RANGE
+
+  # Shoujutsu Table (妖術師: 召喚術)
+  ShoujutsuTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-shoujutsu
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: shoujutsu_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+        - AttributeName: shoujutsu_id
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
   # NoroiCurses Table (妖術師: 呪術)
   NoroiCursesTable:
@@ -1933,6 +1956,135 @@ Resources:
           Properties:
             RestApiId: !Ref YokaiApi
             Path: /skill/kitoshi/prayer/receive
+            Method: POST
+
+  # Lambda: POST /skill/yojutsushi/shoujutsu (妖術師: 召喚術 発射)
+  SkillYojutsushiShoujutsuLaunchFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints: [src/handlers/skillYojutsushiShoujutsuLaunch.ts]
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYojutsushiShoujutsuLaunch.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:Query]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:PutItem]
+              Resource: !GetAtt ShoujutsuTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yojutsushi/shoujutsu
+            Method: POST
+
+  # Lambda: GET /skill/yojutsushi/shoujutsu (妖術師: 召喚術 一覧)
+  SkillYojutsushiShoujutsuListFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints: [src/handlers/skillYojutsushiShoujutsuList.ts]
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYojutsushiShoujutsuList.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !GetAtt ShoujutsuTable.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yojutsushi/shoujutsu
+            Method: GET
+
+  # Lambda: POST /skill/yojutsushi/shoujutsu/arrive (妖術師: 召喚術 到達)
+  SkillYojutsushiShoujutsuArriveFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints: [src/handlers/skillYojutsushiShoujutsuArrive.ts]
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYojutsushiShoujutsuArrive.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt ShoujutsuTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yojutsushi/shoujutsu/arrive
+            Method: POST
+
+  # Lambda: POST /skill/yojutsushi/hyakki-yagyo (妖術師: 百鬼夜行)
+  SkillYojutsushiHyakkiYagyoFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints: [src/handlers/skillYojutsushiHyakkiYagyo.ts]
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/skillYojutsushiHyakkiYagyo.handler
+      Timeout: 29
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:GetItem, dynamodb:PutItem]
+              Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /skill/yojutsushi/hyakki-yagyo
             Method: POST
 
   # Lambda: POST /skill/yojutsushi/noroi (妖術師: 呪術)

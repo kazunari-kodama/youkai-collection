@@ -118,6 +118,10 @@
 </button>
 
 <div class="status-bar" id="status-bar">起動中…</div>
+<div id="shoujutsu-overlay" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:1200;background:rgba(10,20,50,0.88);color:#c0d8ff;font-size:13px;padding:8px 20px;border-radius:16px;border:1px solid #4a7cc9;backdrop-filter:blur(4px);gap:12px;align-items:center;">
+  🔮 目標妖怪をタップ
+  <button onclick="cancelShoujutsuMode()" style="margin-left:10px;background:none;border:1px solid #aaa;color:#aaa;border-radius:8px;padding:2px 10px;font-size:11px;cursor:pointer;">キャンセル</button>
+</div>
 <div id="curse-badge" style="display:none;position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:1200;background:rgba(80,0,80,0.88);color:#e0b0ff;font-size:12px;padding:4px 14px;border-radius:12px;border:1px solid #8b2fc9;backdrop-filter:blur(4px);">🔮 呪われている — 術力全消費</div>
 <div id="debug-role-panel" class="debug-role-panel"></div>
 

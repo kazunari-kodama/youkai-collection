@@ -14,7 +14,9 @@ export type SkillId =
   | 'yamabushi_stone'     // 山伏: 石積み
   | 'inori'               // 祈祷師: 祈り
   | 'takusen'             // 祈祷師: 託宣
-  | 'noroi';              // 妖術師: 呪術
+  | 'noroi'               // 妖術師: 呪術
+  | 'shoujutsu'           // 妖術師: 召喚術
+  | 'hyakki_yagyo';       // 妖術師: 百鬼夜行
 
 export const JOB_SKILLS: Partial<Record<JobId, SkillId[]>> = {
   onmyoji:    ['dokaishu', 'shikigami', 'kekkai', 'hisho_shikigami'],
@@ -22,7 +24,7 @@ export const JOB_SKILLS: Partial<Record<JobId, SkillId[]>> = {
   miko:       ['chinkon', 'omikuji'],
   yamabushi:  ['yamabushi_traversal', 'yamabushi_stone'],
   kitoshi:    ['inori', 'takusen'],
-  yojutsushi: ['noroi'],
+  yojutsushi: ['noroi', 'shoujutsu', 'hyakki_yagyo'],
 };
 
 export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: number }> = {
@@ -40,6 +42,8 @@ export const SKILL_META: Record<SkillId, { name: string; desc: string; rangeM?: 
   inori:              { name: '祈祷',       desc: '術力を消費して現在地に祈りを捧げる。半径40m内を通った者に2時間の祈祷効果が宿る', rangeM: 40 },
   takusen:            { name: '託宣',       desc: '術力を消費して神意を問う。半径10km内の未封印妖怪1体がランダムに選ばれ、試行回数-2の加護が24時間宿る', rangeM: 10000 },
   noroi:              { name: '呪術',       desc: '術力を消費して解除済み妖怪に呪いを施す。封印した払い手ユーザーはスキル使用時に術力が全消費される（24時間）。祈祷・結界エリアで解呪' },
+  shoujutsu:          { name: '召喚術',     desc: '解除済み妖怪を召喚し、遠方の妖怪を封印試行する。射程は所持妖怪数×10m、距離1km=5分で到達' },
+  hyakki_yagyo:       { name: '百鬼夜行',   desc: '【SSランク限定】解除妖怪数×100mの範囲内全妖怪に封印を試行する大技' },
 };
 
 export const RANK_SHIKIGAMI_SLOTS: Record<string, number> = {
@@ -86,7 +90,9 @@ export const JUTSU_COST = {
   skill_yamabushi_stone:    5,
   skill_kitoshi_prayer:    10,
   skill_kitoshi_takusen:   20,
-  skill_yojutsushi_noroi:  15,
+  skill_yojutsushi_noroi:     15,
+  skill_yojutsushi_shoujutsu: 20,
+  skill_yojutsushi_hyakki:    50,
 } as const;
 
 export const RANK_JUTSU_MAX: Record<string, number> = {
@@ -168,6 +174,11 @@ export interface AragamiDBItem {
 
 // ---- 祈祷師定数 ----
 export const PRAYER_RADIUS_M       = 40;
+export const SHOUJUTSU_SPEED_MIN_PER_KM = 5;   // 1km = 5分
+export const SHOUJUTSU_RANGE_M_PER_OWN  = 10;  // 所持妖怪数 × 10m
+export const HYAKKI_RANGE_M_PER_RELEASE = 100; // 解除妖怪数 × 100m
+export const HYAKKI_MAX_TARGETS         = 30;  // 1回の百鬼夜行の上限
+
 export const NOROI_DURATION_DAYS   = 7;
 export const NOROI_EFFECT_HOURS    = 24;
 export const PRAYER_DURATION_HOURS = 48;
