@@ -605,7 +605,7 @@ async function confirmCapture() {
       _curseExpiresAt = until;
       localStorage.setItem('curse_expires_at', until);
       _updateCurseHUD();
-      setTimeout(() => showToast('🔮 呪われた…！\nスキル使用時に術力が全消費される（24時間）\n祈祷・結界エリアで解呪できる', 4000), 1500);
+      setTimeout(() => showToast('🔮 憑依された…！\nスキル使用時に術力が全消費される（24時間）\n祈祷・結界エリアで解呪できる', 4000), 1500);
     }
   }
 }
@@ -1730,7 +1730,7 @@ const SKILL_DEFS = {
     { id: 'omikuji',  name: 'おみくじ', desc: '神意を問い、運命を引く。1日1回のみ。大吉〜大凶まで5種。', locationBased: false },
   ],
   yojutsushi: [
-    { id: 'noroi',       name: '呪術',     desc: '術力15を消費して解除済み妖怪に呪いを施す（7日間）。その妖怪を封印した払い手は術力全消費の呪いを24時間受ける。祈祷・結界エリアで解呪。', locationBased: false },
+    { id: 'noroi',       name: '妖術',     desc: '術力15を消費して解除済み妖怪に憑依を施す（7日間）。その妖怪を封印した払い手は術力全消費の憑依を24時間受ける。祈祷・結界エリアで解呪。', locationBased: false },
     { id: 'shoujutsu',   name: '召喚術',   desc: '解除済み妖怪を召喚し、射程（所持数×10m）内の遠方妖怪を封印試行する。距離1km=5分で到達。', locationBased: false },
     { id: 'hyakki_yagyo', name: '百鬼夜行', desc: '【SSランク限定】術力50消費。解除妖怪数×100mの範囲内全妖怪に封印を試行する大技。', locationBased: false },
     { id: 'reveal',      name: '妖眼',     desc: '妖術の眼で妖怪の真の姿・伝承・出没地を看破する。封印・契約済みの妖怪からコレクション画面で発動。', locationBased: false },
@@ -2236,7 +2236,7 @@ openCollection = function(skillId = null) {
             onclick="event.stopPropagation();activateTamafuri('${y.id}')">魂を振る</button>`;
     } else if (skillId === 'noroi' && actionType === 'release' && job === 'yojutsushi') {
       skillBtn = `<button class="skill-action-btn" style="margin-top:4px;font-size:10px;padding:5px;background:#4a1a4a;border-color:#8b2fc9;color:#e0c0ff;"
-        onclick="event.stopPropagation();activateNoroi('${y.id}')">呪術を施す</button>`;
+        onclick="event.stopPropagation();activateNoroi('${y.id}')">妖術を施す</button>`;
     } else if (skillId === 'shoujutsu' && actionType === 'release' && job === 'yojutsushi') {
       skillBtn = `<button class="skill-action-btn" style="margin-top:4px;font-size:10px;padding:5px;background:#1a2a4a;border-color:#4a7cc9;color:#c0d8ff;"
         onclick="event.stopPropagation();selectShoujutsuSummon('${y.id}')">この妖怪を召喚</button>`;
@@ -2657,7 +2657,7 @@ function _checkPrayerProximity(lat, lon) {
   }
 }
 
-// ---- 妖術師: 呪術 ------------------------------------------
+// ---- 妖術師: 妖術 ------------------------------------------
 let _curseExpiresAt  = localStorage.getItem('curse_expires_at') ?? null;
 let _lastCleanseTry  = 0;
 
@@ -2672,11 +2672,11 @@ async function activateNoroi(youkaiId) {
   if (!res.ok) {
     if (res.status === 402) showToast(`術力不足（必要: ${res.data?.required ?? 15}）`);
     else if (res.status === 403) showToast('妖術師のみ使用可能');
-    else if (res.status === 409) showToast('解除済みの妖怪にのみ呪術を施せます');
-    else showToast('呪術失敗: ' + (res.data?.error ?? 'エラー'));
+    else if (res.status === 409) showToast('解除済みの妖怪にのみ妖術を施せます');
+    else showToast('妖術失敗: ' + (res.data?.error ?? 'エラー'));
     return;
   }
-  showSkillResult('呪 術', `呪いを施した。\n\nこの妖怪を封印した払い手は\n24時間、術力が全消費される。\n\n術力残: ${res.data.jutsuriyoku}`);
+  showSkillResult('妖 術', `憑依を施した。\n\nこの妖怪を封印した払い手は\n24時間、術力が全消費される。\n\n術力残: ${res.data.jutsuriyoku}`);
   if (_activeSkillId) openCollection(_activeSkillId);
 }
 
@@ -2825,7 +2825,7 @@ async function _checkCleanse(lat, lon) {
     _curseExpiresAt = null;
     localStorage.removeItem('curse_expires_at');
     _updateCurseHUD();
-    showToast('🕊️ 呪いが解けた');
+    showToast('🕊️ 憑依が解けた');
   }
 }
 
