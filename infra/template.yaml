@@ -11,6 +11,11 @@ Parameters:
     Type: String
     Default: change-me-before-deploy
     Description: Secret key for system (Claude routine) API (X-System-Key header)
+  AllowDebug:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Allow debug:true to skip jutsuriyoku cost. Keep 'false' in production; set 'true' only for local dev.
 
 Globals:
   Function:
@@ -25,6 +30,7 @@ Globals:
         IMAGES_BASE_URL: !Sub 'https://${ImagesDistribution.DomainName}'
         ADMIN_KEY: !Ref AdminKey
         SYSTEM_KEY: !Ref SystemKey
+        ALLOW_DEBUG: !Ref AllowDebug
         RESEARCH_TABLE: !Ref YoukaiResearchTable
         CORE_TABLE: !Ref YoukaiCoreTable
         IMAGES_BUCKET: youkai-collection-images

@@ -3,9 +3,9 @@
 // デプロイ時: GitHub Actions が __API_BASE_URL__ を自動置換
 const API_BASE_URL = 'https://5rmuhg7c8d.execute-api.ap-northeast-1.amazonaws.com/prod';
 
-// DEV フラグ: localhost / 127.0.0.1、または ?debug=1 のときに true
-const IS_DEV = ['localhost', '127.0.0.1'].includes(location.hostname)
-  || new URLSearchParams(location.search).get('debug') === '1';
+// DEV フラグ: localhost / 127.0.0.1 のみ。
+// 本番では ?debug=1 を無効化（位置偽装・データリセット等の不正利用を防止）
+const IS_DEV = ['localhost', '127.0.0.1'].includes(location.hostname);
 
 // ナイトタイムフラグ: 17時〜翌5時を夜とする
 const IS_NIGHT = new URLSearchParams(location.search).get('night') === '1'

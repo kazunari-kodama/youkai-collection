@@ -23,6 +23,7 @@ interface CaptureRequest {
   job?:       string;
   rallyKey?:  string;
   qrCode?:    string;
+  debug?:     boolean;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {

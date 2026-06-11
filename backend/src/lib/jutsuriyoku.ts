@@ -8,6 +8,10 @@ import {
   RANK_JUTSU_MAX,
 } from '../types/skill';
 
+// 本番では debug を許可しない（術力消費スキップの不正利用を防止）。
+// ローカル開発時のみ ALLOW_DEBUG=true を設定する。
+const ALLOW_DEBUG = process.env.ALLOW_DEBUG === 'true';
+
 export interface JutsuProfile {
   jutsuriyoku: number;
   jutsuriyoku_max: number;
@@ -56,7 +60,7 @@ export async function deductJutsu(
   const current = calcCurrentJutsu(profile);
   const max     = maxJutsu(profile.rank ?? 'C');
 
-  if (debug) return { ok: true, current, max };
+  if (debug && ALLOW_DEBUG) return { ok: true, current, max };
 
   if (current < cost) return { ok: false, current, max };
 
