@@ -71,6 +71,41 @@ body { font-family: 'Noto Serif JP', 'Shippori Mincho B1', serif; background: va
 }
 .back-link:hover { color: var(--ac-text); }
 
+/* ──────── 認証タブ / バナー / アップグレード ──────── */
+.ac-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.ac-tab {
+  flex: 1; font-family: inherit; font-size: 12px; letter-spacing: .1em;
+  background: transparent; color: var(--ac-muted);
+  border: 1px solid var(--ac-border); border-radius: 6px;
+  padding: 8px; cursor: pointer; transition: all .15s;
+}
+.ac-tab:hover  { color: var(--ac-text); border-color: var(--ac-muted); }
+.ac-tab.active { background: var(--ac-accent); color: #0d1117; border-color: transparent; font-weight: 700; }
+
+.form-hint { font-size: 11px; color: var(--ac-muted); line-height: 1.6; margin: -6px 0 14px; }
+
+.ac-banner {
+  border-radius: 6px; padding: 10px 14px; font-size: 12px; line-height: 1.6;
+  margin-bottom: 16px; white-space: pre-wrap;
+}
+.ac-banner.success { background: rgba(120,180,90,.14); border: 1px solid rgba(120,180,90,.4); color: #a8d88a; }
+.ac-banner.cancel  { background: rgba(201,55,43,.10); border: 1px solid rgba(201,55,43,.3); color: var(--ac-muted); }
+
+/* アップグレード画面 */
+#upgrade-view {
+  display: flex; align-items: center; justify-content: center;
+  height: 100dvh; position: relative;
+}
+.upgrade-body { text-align: center; margin-bottom: 22px; }
+.upgrade-lead { font-size: 15px; font-weight: 700; letter-spacing: .06em; margin-bottom: 12px; }
+.upgrade-desc { font-size: 12px; color: var(--ac-muted); line-height: 1.8; }
+.link-btn {
+  display: block; width: 100%; text-align: center; margin-top: 14px;
+  background: none; border: none; font-family: inherit;
+  font-size: 12px; color: var(--ac-muted); cursor: pointer; letter-spacing: .05em;
+}
+.link-btn:hover { color: var(--ac-text); }
+
 /* ──────── 地図画面レイアウト ──────── */
 #map-view { display: flex; flex-direction: column; height: 100dvh; position: relative; }
 

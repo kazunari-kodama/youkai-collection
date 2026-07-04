@@ -60,19 +60,60 @@ let allItems = [];
 let markers = [];
 let currentFilter = '';
 
+// 認証フロー用の一時状態
+let pendingIdToken      = null;  // 非プレミアムでログイン成功したユーザーの idToken（決済に使用、localStorage には保存しない）
+let pendingSignupEmail  = '';    // サインアップ→確認コードの受け渡し
+let pendingSignupPassword = '';  // 確認完了後の自動ログイン用
+
 // ──────────────────────────────────────────────
 // 起動
 // ──────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token && !isTokenExpired(token)) {
-    showMapView(token);
+  const checkout = new URLSearchParams(location.search).get('checkout');
+  if (checkout === 'success') {
+    // 決済直後：古い非プレミアムトークンを破棄し、再ログインで premium を反映させる
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    showBanner('success', '決済ありがとうございます。反映まで少し時間がかかる場合があります。少し待ってから再ログインすると学術モードが解放されます。');
+  } else if (checkout === 'cancel') {
+    showBanner('cancel', '決済がキャンセルされました。いつでもアップグレードできます。');
+  } else {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token && !isTokenExpired(token) && isPremium(token)) {
+      showMapView(token);
+    }
   }
-  // Enter キーでログイン
-  document.getElementById('login-password').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
+  // Enter キーで各フォームを送信
+  bindEnter('login-password', doLogin);
+  bindEnter('signup-password', doSignup);
+  bindEnter('confirm-code', doConfirm);
 });
+
+function bindEnter(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') fn(); });
+}
+
+// ──────────────────────────────────────────────
+// 認証モード切替（ログイン / 新規登録 / 確認コード）
+// ──────────────────────────────────────────────
+function switchAuthMode(mode) {
+  clearError();
+  const forms = { login: 'login-form', signup: 'signup-form', confirm: 'confirm-form' };
+  Object.values(forms).forEach(id => { document.getElementById(id).style.display = 'none'; });
+  document.getElementById(forms[mode] || forms.login).style.display = 'block';
+  // タブ表示（confirm は signup タブのアクティブ扱い）
+  const tabActive = (mode === 'confirm') ? 'signup' : mode;
+  document.getElementById('tab-login').classList.toggle('active', tabActive === 'login');
+  document.getElementById('tab-signup').classList.toggle('active', tabActive === 'signup');
+}
+
+function getUserPool() {
+  return new AmazonCognitoIdentity.CognitoUserPool({
+    UserPoolId: COGNITO_USER_POOL_ID,
+    ClientId  : COGNITO_CLIENT,
+  });
+}
 
 // ──────────────────────────────────────────────
 // ログイン
@@ -90,10 +131,7 @@ function doLogin() {
   const resetBtn = () => { btn.disabled = false; btn.textContent = 'ログ イ ン'; };
 
   try {
-    const userPool = new AmazonCognitoIdentity.CognitoUserPool({
-      UserPoolId: COGNITO_USER_POOL_ID,
-      ClientId  : COGNITO_CLIENT,
-    });
+    const userPool = getUserPool();
     const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
       Username: email,
       Pool    : userPool,
@@ -107,16 +145,18 @@ function doLogin() {
       onSuccess(result) {
         const idToken      = result.getIdToken().getJwtToken();
         const refreshToken = result.getRefreshToken().getToken();
+        resetBtn();
 
+        // 非プレミアムでもログインは通し、アップグレード画面へ誘導する。
+        // 非プレミアムトークンは localStorage に保存せず、決済呼び出し用にメモリ保持のみ。
         if (!isPremium(idToken)) {
-          showError('学術モードはプレミアム会員限定です。\nアカウントのアップグレードが必要です。');
-          resetBtn();
+          pendingIdToken = idToken;
+          showUpgradeView();
           return;
         }
 
         localStorage.setItem(TOKEN_KEY,   idToken);
         localStorage.setItem(REFRESH_KEY, refreshToken);
-        resetBtn();
         showMapView(idToken);
       },
       onFailure(err) {
@@ -137,14 +177,162 @@ function doLogin() {
 function doLogout() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
-  document.getElementById('map-view').style.display   = 'none';
-  document.getElementById('login-view').style.display = 'flex';
+  pendingIdToken = null;
+  document.getElementById('map-view').style.display     = 'none';
+  document.getElementById('upgrade-view').style.display = 'none';
+  document.getElementById('login-view').style.display   = 'flex';
+  switchAuthMode('login');
 }
 
+// ──────────────────────────────────────────────
+// 新規登録
+// ──────────────────────────────────────────────
+function doSignup() {
+  const email    = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const btn      = document.getElementById('signup-btn');
+
+  clearError();
+  if (!email || !password) { showError('メールアドレスとパスワードを入力してください。'); return; }
+
+  btn.disabled = true; btn.textContent = '登録中…';
+  const reset = () => { btn.disabled = false; btn.textContent = '新 規 登 録'; };
+
+  try {
+    const userPool = getUserPool();
+    const attrs = [ new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'email', Value: email }) ];
+    userPool.signUp(email, password, attrs, null, (err) => {
+      reset();
+      if (err) { showError(translateCognitoError(err.code || err.message || '登録に失敗しました')); return; }
+      // 確認コード入力へ。自動ログイン用に控える
+      pendingSignupEmail    = email;
+      pendingSignupPassword = password;
+      switchAuthMode('confirm');
+    });
+  } catch (e) {
+    reset();
+    showError('通信エラーが発生しました。');
+  }
+}
+
+// ──────────────────────────────────────────────
+// 確認コード検証
+// ──────────────────────────────────────────────
+function doConfirm() {
+  const code = document.getElementById('confirm-code').value.trim();
+  const btn  = document.getElementById('confirm-btn');
+
+  clearError();
+  if (!code) { showError('確認コードを入力してください。'); return; }
+  if (!pendingSignupEmail) { showError('登録情報が不明です。最初からやり直してください。'); switchAuthMode('signup'); return; }
+
+  btn.disabled = true; btn.textContent = '確認中…';
+  const reset = () => { btn.disabled = false; btn.textContent = '確 認 す る'; };
+
+  try {
+    const cognitoUser = new AmazonCognitoIdentity.CognitoUser({ Username: pendingSignupEmail, Pool: getUserPool() });
+    cognitoUser.confirmRegistration(code, true, (err) => {
+      reset();
+      if (err) { showError(translateCognitoError(err.code || err.message || '確認に失敗しました')); return; }
+      // 確認完了 → そのまま自動ログイン（非プレミアムなのでアップグレード画面へ遷移する）
+      autoLoginAfterConfirm(pendingSignupEmail, pendingSignupPassword);
+    });
+  } catch (e) {
+    reset();
+    showError('通信エラーが発生しました。');
+  }
+}
+
+function autoLoginAfterConfirm(email, password) {
+  switchAuthMode('login');
+  document.getElementById('login-email').value    = email;
+  document.getElementById('login-password').value = password || '';
+  pendingSignupPassword = '';
+  if (password) {
+    doLogin();
+  } else {
+    showBanner('success', '登録が完了しました。ログインしてください。');
+  }
+}
+
+// ──────────────────────────────────────────────
+// アップグレード（Stripe Checkout へ）
+// ──────────────────────────────────────────────
+function showUpgradeView() {
+  document.getElementById('login-view').style.display   = 'none';
+  document.getElementById('map-view').style.display     = 'none';
+  document.getElementById('upgrade-view').style.display = 'flex';
+}
+
+async function doCheckout() {
+  const btn   = document.getElementById('upgrade-btn');
+  const errEl = document.getElementById('upgrade-error');
+  errEl.style.display = 'none';
+
+  if (!pendingIdToken || isTokenExpired(pendingIdToken)) {
+    showUpgradeError('セッションの有効期限が切れました。再ログインしてください。');
+    return;
+  }
+
+  const reset = () => { btn.disabled = false; btn.textContent = 'プレミアムにアップグレード（¥1,500）'; };
+  btn.disabled = true; btn.textContent = '決済ページへ移動中…';
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/billing/checkout`, {
+      method : 'POST',
+      headers: { Authorization: `Bearer ${pendingIdToken}`, 'Content-Type': 'application/json' },
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      showUpgradeError('セッションの有効期限が切れました。再ログインしてください。');
+      reset();
+      return;
+    }
+
+    const data = await res.json();
+
+    if (data.alreadyPremium) {
+      showUpgradeError('すでにプレミアム会員です。再ログインすると学術モードが開きます。');
+      reset();
+      return;
+    }
+    if (data.url) {
+      window.location.href = data.url;  // Stripe Checkout へリダイレクト
+      return;
+    }
+    throw new Error('no checkout url');
+  } catch (e) {
+    showUpgradeError('決済ページの取得に失敗しました。時間をおいて再度お試しください。');
+    reset();
+  }
+}
+
+// ──────────────────────────────────────────────
+// エラー / バナー表示
+// ──────────────────────────────────────────────
 function showError(msg) {
   const el = document.getElementById('login-error');
-  el.textContent    = msg;
-  el.style.display  = 'block';
+  el.textContent   = msg;
+  el.style.display = 'block';
+}
+
+function clearError() {
+  document.getElementById('login-error').style.display = 'none';
+}
+
+function showUpgradeError(msg) {
+  const el = document.getElementById('upgrade-error');
+  el.textContent   = msg;
+  el.style.display = 'block';
+}
+
+function showBanner(kind, msg) {
+  const el = document.getElementById('ac-banner');
+  el.className     = 'ac-banner ' + kind;
+  el.textContent   = msg;
+  el.style.display = 'block';
+  // URL から checkout パラメータを除去（リロード時の再表示を防ぐ）
+  if (history.replaceState) history.replaceState(null, '', location.pathname);
 }
 
 // ──────────────────────────────────────────────
@@ -449,5 +637,15 @@ function translateCognitoError(codeOrMsg) {
     return 'パスワードのリセットが必要です。';
   if (s.includes('LimitExceededException'))
     return 'ログイン試行回数が上限に達しました。しばらくお待ちください。';
+  if (s.includes('UsernameExistsException'))
+    return 'このメールアドレスは既に登録されています。ログインしてください。';
+  if (s.includes('InvalidPasswordException'))
+    return 'パスワードは8文字以上で、大文字・小文字の英字と数字を含めてください。';
+  if (s.includes('InvalidParameterException'))
+    return '入力内容を確認してください。';
+  if (s.includes('CodeMismatchException'))
+    return '確認コードが正しくありません。';
+  if (s.includes('ExpiredCodeException'))
+    return '確認コードの有効期限が切れています。再送信してください。';
   return s;
 }

@@ -1098,6 +1098,76 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
+  # Lambda: POST /billing/checkout (Cognito 認証必須 — Stripe Checkout 発行)
+  BillingCheckoutFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/billingCheckout.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/billingCheckout.handler
+      Environment:
+        Variables:
+          STRIPE_SECRET_PARAM: /youkai-collection/stripe/secret-key
+          STRIPE_PRICE_PARAM:  /youkai-collection/stripe/price-id
+          CHECKOUT_SUCCESS_URL: 'https://www.youkai-collection.jp/academic.html?checkout=success'
+          CHECKOUT_CANCEL_URL:  'https://www.youkai-collection.jp/academic.html?checkout=cancel'
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/youkai-collection/stripe/*'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /billing/checkout
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  # Lambda: POST /billing/webhook (公開 — Stripe 署名検証 → premium グループ付与)
+  BillingWebhookFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/billingWebhook.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/billingWebhook.handler
+      Environment:
+        Variables:
+          STRIPE_SECRET_PARAM:         /youkai-collection/stripe/secret-key
+          STRIPE_WEBHOOK_SECRET_PARAM: /youkai-collection/stripe/webhook-secret
+          USER_POOL_ID: !Ref YokaiUserPool
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/youkai-collection/stripe/*'
+            - Effect: Allow
+              Action: [cognito-idp:AdminAddUserToGroup]
+              Resource: !GetAtt YokaiUserPool.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /billing/webhook
+            Method: POST
+
   # Images CloudFront (youkai-collection-images bucket)
   ImagesOAC:
     Type: AWS::CloudFront::OriginAccessControl
