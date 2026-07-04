@@ -29,6 +29,9 @@ async function deleteAll(table: string, deviceId: string, skAttr: string): Promi
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  if (process.env.ALLOW_DEBUG !== 'true') {
+    return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Disabled in production' }) };
+  }
   const deviceId = event.queryStringParameters?.deviceId;
   if (!deviceId) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'deviceId required' }) };
