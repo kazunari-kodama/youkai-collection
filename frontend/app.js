@@ -76,25 +76,7 @@ const QUIZ_QUESTIONS = [
       {text:'扉を開け放ち、しばし、内なる気配と向き合う', v:'S'},
       {text:'内へと足を踏み入れ、そこに在る者を確かめる', v:'S'},
     ]},
-  { id:3, phase:'F',
-    situation:'親しき友が、近頃、様子がおかしい。\n問えば、「夜ごと、誰かに呼ばれておる気がする」と言う。',
-    question:'そなたは、いかにする。',
-    options:[
-      {text:'護符を渡し、しばし祈祷に通い、友を護る', v:'E'},
-      {text:'信頼できる社に連れゆき、祓いを受けさせる', v:'E'},
-      {text:'友と共に、その「誰か」が何者であるかを聴きにゆく', v:'S'},
-      {text:'友の感覚を否定せず、その意味を共に考える', v:'S'},
-    ]},
-  { id:4, phase:'F',
-    situation:'古の書物に、妖を扱う術が記されておる。\n読み解けば力を得られよう。されど、術には危うさが伴う。',
-    question:'そなたは、いかにする。',
-    options:[
-      {text:'全体を分析し、危うきを避ける道筋から学ぶ', v:'E'},
-      {text:'必要な時に必要な箇所のみを読み、深入りはせぬ', v:'E'},
-      {text:'書物を信ずる師に預け、共に少しずつ読み解く', v:'S'},
-      {text:'危うさも含めて全てを読み、己の内に取り込む', v:'S'},
-    ]},
-  { id:5, phase:'S',
+  { id:3, phase:'S',
     situation:'目の前に、人ならぬ者が現れた。\n害をなす気配はない。されど、人ではない。',
     question:'そなたは、いかにする。',
     options:[
@@ -103,7 +85,7 @@ const QUIZ_QUESTIONS = [
       {text:'名を問い、何を求めて在るのかを聴く', v:'T'},
       {text:'同じ目線まで近づき、その存在を感じ取らんとする', v:'X'},
     ]},
-  { id:6, phase:'S',
+  { id:4, phase:'S',
     situation:'',
     question:'力を得るとは、そなたにとって、いかなることか。',
     options:[
@@ -111,24 +93,6 @@ const QUIZ_QUESTIONS = [
       {text:'目の前の誰かを、確かに支えられるようになること', v:'X'},
       {text:'力に頼らずに済む生き方を、見出すこと', v:'T'},
       {text:'己自身が、これまでとは違う何ものかへと変じてゆくこと', v:'T'},
-    ]},
-  { id:7, phase:'S',
-    situation:'もし、明治の御代より前のごとく、\n妖と人が隣り合うて暮らす世が再び訪れるとせば——',
-    question:'そなたは、いかに思う。',
-    options:[
-      {text:'それは混乱を招く。境は保たれておるべきである', v:'C'},
-      {text:'一部は戻りてもよし。されど線引きは慎重であるべき', v:'X'},
-      {text:'喜ばしきこと。失われた豊かさが戻ろう', v:'T'},
-      {text:'完全な共存こそ、本来の在り方であった', v:'X'},
-    ]},
-  { id:8, phase:'S',
-    situation:'',
-    question:'そなたが「視える者」として、最も恐るることは何か。',
-    options:[
-      {text:'誤れる判断にて、人や妖を傷つけてしまうこと', v:'C'},
-      {text:'助くべき相手を、助けられぬこと', v:'X'},
-      {text:'力を持つことに、慣れてしまうこと', v:'T'},
-      {text:'己が「己」でなくなりてゆくこと', v:'T'},
     ]},
 ];
 
@@ -1207,7 +1171,7 @@ function startQuiz() {
 
 function _rqRender() {
   const q = QUIZ_QUESTIONS[_quiz.idx];
-  const isFact = _quiz.idx < 4;
+  const isFact = _quiz.idx < 2;
   document.getElementById('rq-num').textContent = q.id;
   document.getElementById('rq-phase-label').textContent = isFact ? '陣営の問い' : '心の問い';
   const situEl = document.getElementById('rq-situation');
@@ -1227,19 +1191,19 @@ function _rqRender() {
 }
 
 function _rqSelect(v) {
-  if (_quiz.idx < 4) {
+  if (_quiz.idx < 2) {
     _quiz.fV[v]++;
-    if (_quiz.idx === 3) _quiz.tbF = v;
+    if (_quiz.idx === 1) _quiz.tbF = v;
   } else {
     _quiz.sV[v]++;
-    if (_quiz.idx === 7) _quiz.tbS = v;
+    if (_quiz.idx === 3) _quiz.tbS = v;
   }
   _quiz.idx++;
 
-  if (_quiz.idx === 4) {
+  if (_quiz.idx === 2) {
     _rqShow('rq-transition');
     setTimeout(() => { _rqShow('rq-question'); _rqRender(); }, 2400);
-  } else if (_quiz.idx === 8) {
+  } else if (_quiz.idx === 4) {
     _rqCalcResult();
   } else {
     _rqRender();
