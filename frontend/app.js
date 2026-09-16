@@ -97,12 +97,12 @@ const QUIZ_QUESTIONS = [
 ];
 
 const ROLE_INFO = {
-  onmyoji:    {kanji:'陰陽師', reading:'おんみょうじ', faction:'exorcist',    factionName:'祓い手', emblem:'陰', emblemImg:'assets/images/emblems/onmyoji.png', color:'#1e5fa8', tagline:'暦と式で秩序を読む者',         desc:'世界には法則がある。星の運行、五行の巡り、暦の節目——すべては読み解ける。妖怪もまた、その法則の中にある現象に過ぎない。理解できれば、制御できる。感情より論理、式神は道具——それが陰陽師の道。'},
-  kitoshi:    {kanji:'祈祷師', reading:'きとうし',     faction:'exorcist',    factionName:'祓い手', emblem:'祈', emblemImg:'assets/images/emblems/kitoshi.png', color:'#e8e0d0', tagline:'個別の祈りで穢れを祓う者',   desc:'理屈ではなく、祈りの力で人と土地を守る。一軒の家、一人の病者、一つの土地——目の前の具体的な誰かのために、術を尽くす。派手な術より、毎日の祈祷の積み重ねを重んじる——それが祈祷師の道。'},
-  miko:       {kanji:'神子',   reading:'みこ',         faction:'exorcist',    factionName:'祓い手', emblem:'神', emblemImg:'assets/images/emblems/miko.png', color:'#c8302a', tagline:'神意を聴き、判別し、橋渡す者', desc:'神意を聴き、判別し、人と神の境を結ぶ。自らの意志を前に出すことはないが、何を伝え、何を留めるかを判別する鋭さを持つ。「これは神の声か、自分の声か」——その問いを生涯問い続ける者。'},
-  yojutsushi: {kanji:'妖術師', reading:'ようじゅつし', faction:'supernatural', factionName:'招き手', emblem:'妖', emblemImg:'assets/images/emblems/yojutsushi.png', color:'#b8860b', tagline:'妖の力を借り、契約する者',   desc:'妖怪は契約相手だ。互いに利のある取り決めをすれば、共に在れる。使役でも服従でもなく、交渉——それが妖術師の矜持。妖怪を「取引相手」として尊重する。情に流されない、契約は契約。'},
-  yamabushi:  {kanji:'山伏',   reading:'やまぶし',     faction:'supernatural', factionName:'招き手', emblem:'山', emblemImg:'assets/images/emblems/yamabushi.png', color:'#2d6e3e', tagline:'自ら山に分け入り、近づく者', desc:'山に入り、滝に打たれ、火を焚く中で、人は妖に近づく。妖もまた、人に近づく。人と妖の境など、本来なかった。自らが変容することで、世界の縫い目に近づく——それが山伏の道。'},
-  jujutsushi: {kanji:'呪術師', reading:'じゅじゅつし', faction:'supernatural', factionName:'招き手', emblem:'呪', emblemImg:'assets/images/emblems/jujutsushi.png', color:'#8b2fc9', tagline:'呪を編み、世界を書き換える者', desc:'言葉と象徴には力がある。呪を編み、紋を描き、名を与えることで世界は書き換えられる。妖の力もまた、写し取れる。陰陽師が「読み解く」なら、呪術師は「書き換える」——描くほど、世界はずれていく。'},
+  onmyoji:    {kanji:'陰陽師', reading:'おんみょうじ', faction:'exorcist',    factionName:'祓い手', emblem:'陰', emblemImg:'assets/images/emblems/onmyoji.webp', color:'#1e5fa8', tagline:'暦と式で秩序を読む者',         desc:'世界には法則がある。星の運行、五行の巡り、暦の節目——すべては読み解ける。妖怪もまた、その法則の中にある現象に過ぎない。理解できれば、制御できる。感情より論理、式神は道具——それが陰陽師の道。'},
+  kitoshi:    {kanji:'祈祷師', reading:'きとうし',     faction:'exorcist',    factionName:'祓い手', emblem:'祈', emblemImg:'assets/images/emblems/kitoshi.webp', color:'#e8e0d0', tagline:'個別の祈りで穢れを祓う者',   desc:'理屈ではなく、祈りの力で人と土地を守る。一軒の家、一人の病者、一つの土地——目の前の具体的な誰かのために、術を尽くす。派手な術より、毎日の祈祷の積み重ねを重んじる——それが祈祷師の道。'},
+  miko:       {kanji:'神子',   reading:'みこ',         faction:'exorcist',    factionName:'祓い手', emblem:'神', emblemImg:'assets/images/emblems/miko.webp', color:'#c8302a', tagline:'神意を聴き、判別し、橋渡す者', desc:'神意を聴き、判別し、人と神の境を結ぶ。自らの意志を前に出すことはないが、何を伝え、何を留めるかを判別する鋭さを持つ。「これは神の声か、自分の声か」——その問いを生涯問い続ける者。'},
+  yojutsushi: {kanji:'妖術師', reading:'ようじゅつし', faction:'supernatural', factionName:'招き手', emblem:'妖', emblemImg:'assets/images/emblems/yojutsushi.webp', color:'#b8860b', tagline:'妖の力を借り、契約する者',   desc:'妖怪は契約相手だ。互いに利のある取り決めをすれば、共に在れる。使役でも服従でもなく、交渉——それが妖術師の矜持。妖怪を「取引相手」として尊重する。情に流されない、契約は契約。'},
+  yamabushi:  {kanji:'山伏',   reading:'やまぶし',     faction:'supernatural', factionName:'招き手', emblem:'山', emblemImg:'assets/images/emblems/yamabushi.webp', color:'#2d6e3e', tagline:'自ら山に分け入り、近づく者', desc:'山に入り、滝に打たれ、火を焚く中で、人は妖に近づく。妖もまた、人に近づく。人と妖の境など、本来なかった。自らが変容することで、世界の縫い目に近づく——それが山伏の道。'},
+  jujutsushi: {kanji:'呪術師', reading:'じゅじゅつし', faction:'supernatural', factionName:'招き手', emblem:'呪', emblemImg:'assets/images/emblems/jujutsushi.webp', color:'#8b2fc9', tagline:'呪を編み、世界を書き換える者', desc:'言葉と象徴には力がある。呪を編み、紋を描き、名を与えることで世界は書き換えられる。妖の力もまた、写し取れる。陰陽師が「読み解く」なら、呪術師は「書き換える」——描くほど、世界はずれていく。'},
 };
 
 /** エンブレム表示要素に画像（あれば）か漢字をセットする共通処理 */
@@ -285,13 +285,13 @@ function addYoukaiMarker(youkai) {
   } else if (isInProgress && prog) {
     const pct = Math.round((prog.progress / prog.required) * 100);
     markerHtml = `<div class="hitodama-marker" data-id="${youkai.id}" style="position:relative">` +
-      `<img src="assets/images/hitodama.png" alt="">` +
+      `<img src="assets/images/hitodama.webp" alt="">` +
       `<div class="marker-progress-wrap"><div class="marker-progress-fill" style="width:${pct}%"></div></div>` +
       `</div>`;
   } else if (aragamiSet.has(youkai.id)) {
-    markerHtml = `<div class="hitodama-marker aragami-marker" data-id="${youkai.id}"><img src="assets/images/aratama.png" alt=""></div>`;
+    markerHtml = `<div class="hitodama-marker aragami-marker" data-id="${youkai.id}"><img src="assets/images/aratama.webp" alt=""></div>`;
   } else {
-    markerHtml = `<div class="hitodama-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.png" alt=""></div>`;
+    markerHtml = `<div class="hitodama-marker" data-id="${youkai.id}"><img src="assets/images/hitodama.webp" alt=""></div>`;
   }
 
   const icon = L.divIcon({
@@ -491,7 +491,7 @@ async function triggerUnseal(youkaiId) {
   document.getElementById('unseal-headline').textContent = isSupernatural ? '妖 怪 共 存' : '封 印 解 除';
   // 初期表示は両者共通の破れ札（封印が緩んだ未解除状態）
   talisman.classList.remove('breaking', 'sealing');
-  talisman.innerHTML = `<img class="talisman-img" id="talisman-img" src="assets/images/seal/ofuda-break.png" alt="${isSupernatural ? '召喚' : '封印'}">`;
+  talisman.innerHTML = `<img class="talisman-img" id="talisman-img" src="assets/images/seal/ofuda-break.webp" alt="${isSupernatural ? '召喚' : '封印'}">`;
   talisman.classList.add('has-image');
   talisman.classList.toggle('supernatural', isSupernatural);
 
@@ -527,11 +527,11 @@ function _playSealAnimation(isSupernatural) {
   void talisman.offsetWidth;  // reflow強制で必ず再生
   if (isSupernatural) {
     // 招き手: 破れ目から弾けて妖怪が現れる（召喚）
-    if (timg) timg.src = 'assets/images/seal/ofuda-summon-active.png';
+    if (timg) timg.src = 'assets/images/seal/ofuda-summon-active.webp';
     talisman.classList.add('breaking');
   } else {
     // 払い手: 破れた封印を封じ直し、封の札が光って封印成立
-    if (timg) timg.src = 'assets/images/seal/ofuda-seal.png';
+    if (timg) timg.src = 'assets/images/seal/ofuda-seal.webp';
     talisman.classList.add('sealing');
   }
   nameEl.classList.add('appear');
@@ -577,7 +577,7 @@ async function confirmCapture() {
     const timg2 = document.getElementById('talisman-img');
     document.getElementById('unseal-talisman').classList.remove('breaking', 'sealing');
     document.getElementById('unseal-name').classList.remove('appear');
-    if (timg2) timg2.src = 'assets/images/seal/ofuda-break.png';
+    if (timg2) timg2.src = 'assets/images/seal/ofuda-break.webp';
     if (result.status === 403) {
       showToast('位置が離れすぎています');
     } else if (result.status === 402) {
@@ -2053,7 +2053,7 @@ async function _loadKekkaiStones() {
   _kekkaiMyStones.forEach((s) => {
     const icon = L.divIcon({
       className: '',
-      html: `<img src="assets/images/markers/kekkai-stone.png" class="marker-img marker-kekkai" alt="結界石">`,
+      html: `<img src="assets/images/markers/kekkai-stone.webp" class="marker-img marker-kekkai" alt="結界石">`,
       iconSize:   [42, 42],
       iconAnchor: [21, 21],
     });
@@ -2425,7 +2425,7 @@ function _renderHisho() {
     // 式神アイコン（近距離点滅）
     const blinking = remainSec < 60 ? 'hisho-blink' : '';
     const icon = L.divIcon({
-      html: `<img src="assets/images/markers/shikigami.png" class="marker-img marker-shikigami ${blinking}" alt="式神"><div class="hisho-eta">${remainStr}</div>`,
+      html: `<img src="assets/images/markers/shikigami.webp" class="marker-img marker-shikigami ${blinking}" alt="式神"><div class="hisho-eta">${remainStr}</div>`,
       className: '',
       iconSize: [44, 60],
       iconAnchor: [22, 22],
@@ -2565,7 +2565,7 @@ async function _loadKitoshiPrayers() {
     const effect   = isOwn ? '' : '<br><span style="color:#aaa;">払い手-1 / 招き手+1（2時間）</span>';
     const pIcon    = L.divIcon({
       className: '',
-      html: `<img src="assets/images/markers/inori.png" class="marker-img marker-prayer" alt="祈祷">`,
+      html: `<img src="assets/images/markers/inori.webp" class="marker-img marker-prayer" alt="祈祷">`,
       iconSize: [34, 34], iconAnchor: [14, 14],
     });
     const pMarker  = L.marker([p.lat, p.lon], { icon: pIcon, zIndexOffset: -200 })
@@ -2685,7 +2685,7 @@ function _showTakusenGlow(lat, lon) {
 
   const icon = L.divIcon({
     className: '',
-    html: '<img src="assets/images/markers/takusen.png" class="marker-img marker-takusen" alt="託宣">',
+    html: '<img src="assets/images/markers/takusen.webp" class="marker-img marker-takusen" alt="託宣">',
     iconSize: [36, 36], iconAnchor: [18, 18],
   });
   _takusenInfoMarker = L.marker([lat, lon], { icon, zIndexOffset: -200 })
@@ -2953,8 +2953,8 @@ async function _loadYamabushiStones() {
     const icon = L.divIcon({
       className: '',
       html: count > 1
-        ? `<div class="marker-yamabushi-wrap"><img src="assets/images/markers/yamabushi-stone-stack.png" class="marker-img marker-yamabushi" alt="石積み"><span class="marker-yamabushi-count">${count}</span></div>`
-        : `<img src="assets/images/markers/yamabushi-stone.png" class="marker-img marker-yamabushi" alt="石積み">`,
+        ? `<div class="marker-yamabushi-wrap"><img src="assets/images/markers/yamabushi-stone-stack.webp" class="marker-img marker-yamabushi" alt="石積み"><span class="marker-yamabushi-count">${count}</span></div>`
+        : `<img src="assets/images/markers/yamabushi-stone.webp" class="marker-img marker-yamabushi" alt="石積み">`,
       iconSize:   [44, 48],
       iconAnchor: [22, 44],
     });

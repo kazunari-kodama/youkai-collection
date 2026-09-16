@@ -31,10 +31,24 @@ jobs:
         run: |
           sed "s|__API_BASE_URL__|${{ env.API_URL }}|g" \
             frontend/config.js > /tmp/config.js
-          aws s3 sync frontend/ s3://${{ env.S3_BUCKET }}/ \
-            --exclude "config.js" \
+
+          # 画像などの assets は7日間ブラウザキャッシュさせる。
+          # 差し替える場合はファイル名を変えるか、手動で無効化すること。
+          aws s3 sync frontend/assets/ s3://${{ env.S3_BUCKET }}/assets/ \
+            --cache-control "public, max-age=604800" \
             --delete
-          aws s3 cp /tmp/config.js s3://${{ env.S3_BUCKET }}/config.js
+
+          # HTML/JS/CSS はファイル名にハッシュを持たないので毎回 ETag で再検証させる。
+          # 変更が即反映され、未変更なら 304 で本文は流れない。
+          aws s3 sync frontend/ s3://${{ env.S3_BUCKET }}/ \
+            --exclude "assets/*" \
+            --exclude "config.js" \
+            --cache-control "no-cache" \
+            --delete
+
+          aws s3 cp /tmp/config.js s3://${{ env.S3_BUCKET }}/config.js \
+            --cache-control "no-cache" \
+            --content-type "text/javascript"
 
       - name: Invalidate CloudFront cache
         run: |
