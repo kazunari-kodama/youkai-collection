@@ -15,5 +15,6 @@ const IS_NIGHT = new URLSearchParams(location.search).get('night') === '1'
 // 無し・無効だとタイルに "API KEY REQUIRED" の透かしが入る。
 // 無料枠は月500万タイル（https://carto.com/basemaps/apikey/ で即発行）。
 // リポジトリには置かず、GitHub Actions が secrets.CARTO_API_KEY で
-// __CARTO_API_KEY__ を置換する。未設定なら OSM 標準タイルにフォールバックする。
+// 下のプレースホルダを置換する。未設定なら OSM 標準タイルにフォールバックする。
+// （このコメント内にプレースホルダを書くと sed に巻き込まれるので書かないこと）
 const CARTO_API_KEY = '__CARTO_API_KEY__'.startsWith('__') ? '' : '__CARTO_API_KEY__';
