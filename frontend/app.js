@@ -230,6 +230,34 @@ function _hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+/** 属性値に安全に埋め込める形にする（マーカーHTMLを文字列組み立てしているため） */
+function _attr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** マーカー画像の読み込み失敗時: thumb → camera → 頭文字 の順に退避する */
+function _markerImgFallback(img, initial, fallbackClass, ringStyle) {
+  const camera = img.dataset.camera;
+  if (camera && img.src !== camera) { img.src = camera; return; }
+  const parent = img.parentElement;
+  parent.className = fallbackClass;
+  if (ringStyle) parent.setAttribute('style', ringStyle);
+  img.remove();
+  parent.textContent = initial;
+}
+
+/** 封印済みマーカーの <img>。44px 表示なので thumb_url（平均5KB）を優先する */
+function _markerImgHtml(youkai, fallbackClass, ringStyle) {
+  const src = youkai.thumb_url || youkai.camera_url;
+  // JSON.stringify で JS リテラル化 → _attr で属性値としてエスケープ（二重エスケープを避けるため一度ずつ）
+  const args = [youkai.name.charAt(0), fallbackClass, ringStyle].map((v) => JSON.stringify(String(v)));
+  const onerror = `_markerImgFallback(this,${args.join(',')})`;
+  return `<img src="${_attr(src)}" alt="${_attr(youkai.name)}" loading="lazy" decoding="async" ` +
+    (youkai.thumb_url && youkai.camera_url ? `data-camera="${_attr(youkai.camera_url)}" ` : '') +
+    `onerror="${_attr(onerror)}">`;
+}
+
 function capturedMarkerHtml(youkai, actionType) {
   const isBond = actionType === 'bond';
   const roleInfo = currentRole && ROLE_INFO[currentRole];
@@ -237,11 +265,9 @@ function capturedMarkerHtml(youkai, actionType) {
   const glow    = _hexToRgba(border, 0.7);
   const ringStyle = `border:2px solid ${border};box-shadow:0 0 14px ${glow},0 4px 8px rgba(0,0,0,0.6)`;
   const ring = isBond ? 'bond' : 'seal';
-  console.log('[marker]', youkai.id, actionType, ring, border);
-  if (youkai.camera_url) {
+  if (youkai.thumb_url || youkai.camera_url) {
     return `<div class="captured-marker ${ring}" style="${ringStyle}" data-id="${youkai.id}">` +
-      `<img src="${youkai.camera_url}" alt="${youkai.name}" ` +
-      `onerror="this.parentElement.className='captured-marker-fallback ${ring}';this.parentElement.style='${ringStyle}';this.remove();this.parentElement.textContent='${youkai.name.charAt(0)}'">` +
+      _markerImgHtml(youkai, `captured-marker-fallback ${ring}`, ringStyle) +
       `</div>`;
   }
   return `<div class="captured-marker-fallback ${ring}" style="${ringStyle}" data-id="${youkai.id}">${youkai.name.charAt(0)}</div>`;
@@ -1439,10 +1465,9 @@ async function dismissIntro() {
 
 function rallyMarkerHtml(youkai) {
   if (rallyState.capturedIds.has(youkai.id)) {
-    if (youkai.camera_url) {
+    if (youkai.thumb_url || youkai.camera_url) {
       return `<div class="rally-captured-marker" data-id="${youkai.id}">` +
-        `<img src="${youkai.camera_url}" alt="${youkai.name}" ` +
-        `onerror="this.parentElement.className='rally-captured-marker-fallback';this.remove();this.parentElement.textContent='${youkai.name.charAt(0)}'">` +
+        _markerImgHtml(youkai, 'rally-captured-marker-fallback', '') +
         `</div>`;
     }
     return `<div class="rally-captured-marker-fallback" data-id="${youkai.id}">${youkai.name.charAt(0)}</div>`;

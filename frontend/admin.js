@@ -225,6 +225,48 @@ function clearForm() {
 }
 
 // ── Image upload ───────────────────────────────────────────────────────────
+
+/** サムネの長辺(px)。マーカーは44px表示なので3xRetinaまで耐える。
+ *  backend/scripts/generate-thumbs.mjs の THUMB_SIZE と揃えること。 */
+const THUMB_SIZE = 144;
+
+/** "youkai/xxx_camera.png" → "thumbs/xxx_camera.webp"（backend の toThumbUrl と同じ規則） */
+function toThumbKey(cameraKey) {
+  return `thumbs/${cameraKey.slice('youkai/'.length).replace(/\.[^.]+$/, '')}.webp`;
+}
+
+/** カメラ画像から長辺 THUMB_SIZE の webp サムネを作る。失敗時は null */
+async function makeThumbBlob(file) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(THUMB_SIZE / bitmap.width, THUMB_SIZE / bitmap.height, 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', 0.8));
+    return blob && blob.type === 'image/webp' ? blob : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 署名付きURLを取得して S3 に PUT する。Cache-Control は署名と一致させる必要がある */
+async function putToS3(key, blob, contentType) {
+  const res = await apiFetch('/admin/upload-url', {
+    method: 'POST',
+    body: JSON.stringify({ key, contentType }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const { url, cacheControl } = await res.json();
+
+  const headers = { 'Content-Type': contentType };
+  if (cacheControl) headers['Cache-Control'] = cacheControl;
+  const putRes = await fetch(url, { method: 'PUT', body: blob, headers });
+  if (!putRes.ok) throw new Error(`S3 PUT failed (${key})`);
+}
+
 async function uploadImage() {
   const fileInput = document.getElementById('upload-file');
   const file = fileInput.files[0];
@@ -242,23 +284,26 @@ async function uploadImage() {
   prog.textContent = 'アップロード中…';
 
   try {
-    const res = await apiFetch('/admin/upload-url', {
-      method: 'POST',
-      body: JSON.stringify({ key, contentType: file.type }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const { url } = await res.json();
+    await putToS3(key, file, file.type);
 
-    const putRes = await fetch(url, {
-      method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': file.type },
-    });
-    if (!putRes.ok) throw new Error('S3 PUT failed');
+    // マーカー用サムネも生成してアップロード（失敗しても本体は保存済みなので続行）
+    prog.textContent = 'サムネイル生成中…';
+    const thumb = await makeThumbBlob(file);
+    let thumbNote = '';
+    if (thumb) {
+      try {
+        await putToS3(toThumbKey(key), thumb, 'image/webp');
+        thumbNote = `（サムネ ${(thumb.size / 1024).toFixed(1)}KB）`;
+      } catch {
+        thumbNote = '（サムネ失敗: generate-thumbs.mjs で後追い生成してください）';
+      }
+    } else {
+      thumbNote = '（サムネ生成不可: generate-thumbs.mjs で後追い生成してください）';
+    }
 
     cameraKey = key;
     renderCameraPreview();
-    prog.textContent = '✓ アップロード完了';
+    prog.textContent = `✓ アップロード完了 ${thumbNote}`;
     fileInput.value = '';
   } catch (e) {
     prog.textContent = 'エラー: ' + e.message;

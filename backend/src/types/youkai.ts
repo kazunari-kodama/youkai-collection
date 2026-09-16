@@ -26,7 +26,9 @@ export interface YokaiListItem {
   name: string;
   lat: number;
   lon: number;
-  icon_url: string;
+  /** マーカー用サムネ（長辺144px webp、平均5KB）。scripts/generate-thumbs.mjs が生成 */
+  thumb_url: string;
+  /** フル解像度。詳細画面と、サムネ未生成時のフォールバック用 */
   camera_url: string;
   night_only?: boolean;
   require_qr?: boolean;

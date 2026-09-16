@@ -19,15 +19,31 @@ export const KITOSHI_PRAYERS_TABLE    = process.env.KITOSHI_PRAYERS_TABLE!;
 export const NOROI_CURSES_TABLE       = process.env.NOROI_CURSES_TABLE!;
 export const SHOUJUTSU_TABLE          = process.env.SHOUJUTSU_TABLE!;
 
-/** images[0] → camera URL
- *  "youkai/xxx_camera.png"  → "{base}/youkai/xxx_camera.png"  (direct key, new format)
- *  "images/yamaonna.png"    → "{base}/youkai/yamaonna_camera.png"  (legacy format)
+/** images[0] → camera の S3 キー
+ *  "youkai/xxx_camera.png"  → "youkai/xxx_camera.png"  (direct key, new format)
+ *  "images/yamaonna.png"    → "youkai/yamaonna_camera.png"  (legacy format)
  */
-export function toCameraUrl(images: string[] | undefined, base: string): string {
+function toCameraKey(images: string[] | undefined): string {
   if (!images?.length) return '';
   const first = images[0];
-  if (first.startsWith('youkai/')) return `${base}/${first}`;
+  if (first.startsWith('youkai/')) return first;
   const baseName = first.split('/').pop()?.replace('.png', '') ?? '';
   if (!baseName) return '';
-  return `${base}/youkai/${baseName}_camera.png`;
+  return `youkai/${baseName}_camera.png`;
+}
+
+/** images[0] → camera URL（フル解像度。詳細画面・撮影演出用） */
+export function toCameraUrl(images: string[] | undefined, base: string): string {
+  const key = toCameraKey(images);
+  return key ? `${base}/${key}` : '';
+}
+
+/** images[0] → マーカー用サムネ URL（長辺144px webp、平均5KB）
+ *  キーの規則は scripts/generate-thumbs.mjs の toThumbKey と一致させること。
+ *  "youkai/xxx_camera.png" → "{base}/thumbs/xxx_camera.webp"
+ */
+export function toThumbUrl(images: string[] | undefined, base: string): string {
+  const key = toCameraKey(images);
+  if (!key) return '';
+  return `${base}/thumbs/${key.slice('youkai/'.length).replace(/\.[^.]+$/, '')}.webp`;
 }

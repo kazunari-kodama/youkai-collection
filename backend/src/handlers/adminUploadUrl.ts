@@ -12,6 +12,9 @@ const IMAGES_BUCKET = process.env.IMAGES_BUCKET!;
 
 const s3 = new S3Client({});
 
+/** 画像の Cache-Control。7日キャッシュ（差し替えアップロード後も1週間以内に追従する） */
+const IMAGE_CACHE_CONTROL = 'public, max-age=604800';
+
 export const handler: APIGatewayProxyHandler = async (event) => {
   const receivedKey = event.headers['x-admin-key'] ?? event.headers['X-Admin-Key'];
   if (receivedKey !== ADMIN_KEY) {
@@ -30,18 +33,21 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'key and contentType required' }) };
   }
 
-  // Only allow uploads into the youkai/ prefix
-  if (!key.startsWith('youkai/')) {
-    return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'key must start with youkai/' }) };
+  // youkai/ はフル解像度、thumbs/ はマーカー用サムネ。それ以外の書き込みは許可しない
+  if (!key.startsWith('youkai/') && !key.startsWith('thumbs/')) {
+    return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'key must start with youkai/ or thumbs/' }) };
   }
 
+  // 同じキーに差し替えアップロードされうるので immutable にはしない。
+  // クライアントは署名と一致させるため同じ Cache-Control ヘッダーを送る必要がある。
   const command = new PutObjectCommand({
     Bucket: IMAGES_BUCKET,
     Key: key,
     ContentType: contentType,
+    CacheControl: IMAGE_CACHE_CONTROL,
   });
 
   const url = await getSignedUrl(s3, command, { expiresIn: 300 });
 
-  return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ url, key }) };
+  return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ url, key, cacheControl: IMAGE_CACHE_CONTROL }) };
 };

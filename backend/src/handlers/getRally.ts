@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, IMAGES_BASE_URL, toCameraUrl } from '../lib/dynamodb';
+import { ddb, YOUKAI_TABLE, IMAGES_BASE_URL, toCameraUrl, toThumbUrl } from '../lib/dynamodb';
 import type { YokaiDBItem } from '../types/youkai';
 
 const HEADERS = {
@@ -33,6 +33,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     name: item.name,
     lat: item.latitude,
     lon: item.longitude,
+    thumb_url: toThumbUrl(item.images, IMAGES_BASE_URL),
     camera_url: toCameraUrl(item.images, IMAGES_BASE_URL),
     rally_key: item.rally_key,
     ...(item.require_qr ? { require_qr: true } : {}),
