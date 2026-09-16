@@ -197,24 +197,41 @@ function initMap() {
     attributionControl: false,
   });
 
+  const osmLayer = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OSM',
+  });
+
   // CARTO はキーが無いとタイルに "API KEY REQUIRED" の透かしが入るので、
   // キー未設定時は夜間でも OSM 標準タイルにフォールバックする。
   const useCarto = IS_NIGHT && !!CARTO_API_KEY;
 
-  if (useCarto) {
-    L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_API_KEY)}`, {
-      maxZoom: 19,
-      attribution: '© OSM © CARTO',
-    }).addTo(map);
-  } else {
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OSM',
-    }).addTo(map);
-  }
+  const cartoLayer = useCarto
+    ? L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_API_KEY)}`, {
+        maxZoom: 19,
+        attribution: '© OSM © CARTO',
+      })
+    : null;
+  (cartoLayer ?? osmLayer()).addTo(map);
 
   L.control.zoom({ position: 'topleft' }).addTo(map);
-  L.control.attribution({ position: 'bottomleft', prefix: false }).addAttribution(useCarto ? '© OSM © CARTO' : '© OSM').addTo(map);
+  const attributionCtl = L.control
+    .attribution({ position: 'bottomleft', prefix: false })
+    .addAttribution(useCarto ? '© OSM © CARTO' : '© OSM')
+    .addTo(map);
+
+  // キーの失効・無料枠超過・Referer 制限漏れで CARTO が 403 を返すと、
+  // 夜間の地図が真っ暗なまま復帰しない。連続失敗したら OSM に切り替える。
+  if (cartoLayer) {
+    let tileErrors = 0;
+    cartoLayer.on('tileerror', () => {
+      if (++tileErrors < 5 || !map.hasLayer(cartoLayer)) return;
+      map.removeLayer(cartoLayer);
+      osmLayer().addTo(map);
+      attributionCtl.removeAttribution('© OSM © CARTO').addAttribution('© OSM');
+      console.warn('[map] CARTO タイルの取得に失敗したため OSM にフォールバックしました');
+    });
+  }
 
   const visibleYoukai = youkaiData.filter((y) => !y.night_only || IS_NIGHT);
   visibleYoukai.forEach((y) => addYoukaiMarker(y));
