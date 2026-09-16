@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { GetCommand, QueryCommand, UpdateCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, PLAYER_PROFILE_TABLE, CAPTURES_TABLE, YOUKAI_TABLE } from '../lib/dynamodb';
+import { GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, PLAYER_PROFILE_TABLE, CAPTURES_TABLE, YOUKAI_TABLE, scanAll } from '../lib/dynamodb';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 const BONUS_PER_20PCT = 1;
@@ -36,11 +36,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   );
 
   // 全妖怪をスキャンして都道府県情報を取得
-  const yokaiScanRes = await ddb.send(new ScanCommand({
+  const allYoukai = await scanAll<Record<string, unknown>>({
     TableName: YOUKAI_TABLE,
     ProjectionExpression: 'yokai_id, prefecture, regions',
-  }));
-  const allYoukai = yokaiScanRes.Items ?? [];
+  });
 
   // 都道府県ごとに集計（prefecture 優先、未設定時は regions[0] にフォールバック）
   const prefMap = new Map<string, { total: number; sealed: number }>();

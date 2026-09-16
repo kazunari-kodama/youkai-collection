@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { GetCommand, QueryCommand, UpdateCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
+import { GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, scanAll } from '../lib/dynamodb';
 import { deductJutsu } from '../lib/jutsuriyoku';
 import { distanceMeters } from '../lib/distance';
 import { JUTSU_COST } from '../types/skill';
@@ -66,13 +66,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const capturedIds = new Set((capturesRes.Items ?? []).map((i) => i.youkaiId as string));
 
   // 全妖怪をスキャンして10km圏内・未封印のものを収集
-  const youkaiRes = await ddb.send(new ScanCommand({
+  const allYoukai = await scanAll<Record<string, unknown>>({
     TableName: YOUKAI_TABLE,
     ProjectionExpression: 'yokai_id, #n, latitude, longitude',
     ExpressionAttributeNames: { '#n': 'name' },
-  }));
+  });
 
-  const candidates = (youkaiRes.Items ?? []).filter((y) => {
+  const candidates = allYoukai.filter((y) => {
     if (capturedIds.has(y.yokai_id as string)) return false;
     const d = distanceMeters(userLat, userLon, y.latitude as number, y.longitude as number);
     return d <= TAKUSEN_RADIUS_M;

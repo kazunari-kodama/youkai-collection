@@ -1,6 +1,5 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, IMAGES_BASE_URL, toCameraUrl, toThumbUrl } from '../lib/dynamodb';
+import { YOUKAI_TABLE, IMAGES_BASE_URL, toCameraUrl, toThumbUrl, scanAll } from '../lib/dynamodb';
 import type { YokaiDBItem, YokaiListItem } from '../types/youkai';
 
 const HEADERS = {
@@ -9,16 +8,14 @@ const HEADERS = {
 };
 
 export const handler: APIGatewayProxyHandler = async () => {
-  const result = await ddb.send(
-    new ScanCommand({
-      TableName: YOUKAI_TABLE,
-      FilterExpression: 'attribute_not_exists(rally_key)',
-      ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, night_only, #rq',
-      ExpressionAttributeNames: { '#n': 'name', '#rq': 'require_qr' },
-    }),
-  );
+  const scanned = await scanAll<YokaiDBItem>({
+    TableName: YOUKAI_TABLE,
+    FilterExpression: 'attribute_not_exists(rally_key)',
+    ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, night_only, #rq',
+    ExpressionAttributeNames: { '#n': 'name', '#rq': 'require_qr' },
+  });
 
-  const items: YokaiListItem[] = ((result.Items ?? []) as YokaiDBItem[]).map((item) => ({
+  const items: YokaiListItem[] = scanned.map((item) => ({
     id: item.yokai_id,
     name: item.name,
     lat: item.latitude,

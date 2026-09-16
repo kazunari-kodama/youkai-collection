@@ -1,6 +1,5 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, IMAGES_BASE_URL, toCameraUrl, toThumbUrl } from '../lib/dynamodb';
+import { YOUKAI_TABLE, IMAGES_BASE_URL, toCameraUrl, toThumbUrl, scanAll } from '../lib/dynamodb';
 import type { YokaiDBItem } from '../types/youkai';
 
 const HEADERS = {
@@ -14,21 +13,19 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'key required' }) };
   }
 
-  const result = await ddb.send(
-    new ScanCommand({
-      TableName: YOUKAI_TABLE,
-      FilterExpression: 'rally_key = :k',
-      ExpressionAttributeValues: { ':k': key },
-      ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, image_types, rally_key, #rq',
-      ExpressionAttributeNames: { '#n': 'name', '#rq': 'require_qr' },
-    }),
-  );
+  const scanned = await scanAll<YokaiDBItem>({
+    TableName: YOUKAI_TABLE,
+    FilterExpression: 'rally_key = :k',
+    ExpressionAttributeValues: { ':k': key },
+    ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, image_types, rally_key, #rq',
+    ExpressionAttributeNames: { '#n': 'name', '#rq': 'require_qr' },
+  });
 
-  if (!result.Items?.length) {
+  if (!scanned.length) {
     return { statusCode: 404, headers: HEADERS, body: JSON.stringify({ error: 'Invalid rally key' }) };
   }
 
-  const yokai = (result.Items as YokaiDBItem[]).map((item) => ({
+  const yokai = scanned.map((item) => ({
     id: item.yokai_id,
     name: item.name,
     lat: item.latitude,

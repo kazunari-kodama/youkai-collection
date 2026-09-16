@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { GetCommand, PutCommand, QueryCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, scanAll } from '../lib/dynamodb';
 import { deductJutsu } from '../lib/jutsuriyoku';
 import { distanceMeters } from '../lib/distance';
 import {
@@ -74,12 +74,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   );
 
   // 射程内の全妖怪スキャン
-  const youkaiRes = await ddb.send(new ScanCommand({
+  const allYoukai = await scanAll<Record<string, unknown>>({
     TableName: YOUKAI_TABLE,
     ProjectionExpression: 'yokai_id, latitude, longitude, youryoku',
-  }));
+  });
 
-  const candidates = (youkaiRes.Items ?? [])
+  const candidates = allYoukai
     .filter((y) => {
       if (alreadyCaptured.has(y.yokai_id as string)) return false;
       const d = distanceMeters(userLat, userLon, y.latitude as number, y.longitude as number);

@@ -50,6 +50,9 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: prod
+      # レスポンスを gzip 圧縮する。/youkai は 44KB あり、モバイル回線では
+      # 効果が大きい。1KB 未満は圧縮してもオーバーヘッドの方が勝るので除外。
+      MinimumCompressionSize: 1024
       Cors:
         AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Admin-Key,X-System-Key,Authorization'"

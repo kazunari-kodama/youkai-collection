@@ -1,8 +1,38 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import type { ScanCommandInput } from '@aws-sdk/lib-dynamodb';
 
 const client = new DynamoDBClient({});
 export const ddb = DynamoDBDocumentClient.from(client);
+
+/**
+ * LastEvaluatedKey が尽きるまで Scan を繰り返して全件返す。
+ *
+ * Scan は1回あたり 1MB までしか読まず、FilterExpression はその 1MB を読んだ「後」に
+ * 適用される。ページングしないと、テーブルが育った時点で結果がエラーも出さずに
+ * 欠け始める（kodama_db は1件約1.3KBなので約800件が単一ページの限界）。
+ *
+ * maxPages は暴走時の保険。打ち切った場合は警告を出したうえで取得済み分を返す。
+ */
+export async function scanAll<T>(input: ScanCommandInput, maxPages = 20): Promise<T[]> {
+  const out: T[] = [];
+  let lastKey: Record<string, unknown> | undefined;
+  let pages = 0;
+
+  do {
+    const res = await ddb.send(
+      new ScanCommand({ ...input, ...(lastKey ? { ExclusiveStartKey: lastKey } : {}) }),
+    );
+    out.push(...((res.Items ?? []) as T[]));
+    lastKey = res.LastEvaluatedKey;
+    pages += 1;
+  } while (lastKey && pages < maxPages);
+
+  if (lastKey) {
+    console.warn(`[scanAll] ${input.TableName}: maxPages(${maxPages}) に達したため打ち切り。${out.length}件を返します`);
+  }
+  return out;
+}
 
 export const YOUKAI_TABLE = process.env.YOUKAI_TABLE!;
 export const CAPTURES_TABLE = process.env.CAPTURES_TABLE!;
