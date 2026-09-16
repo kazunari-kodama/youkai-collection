@@ -10,3 +10,10 @@ const IS_DEV = ['localhost', '127.0.0.1'].includes(location.hostname);
 // ナイトタイムフラグ: 17時〜翌5時を夜とする
 const IS_NIGHT = new URLSearchParams(location.search).get('night') === '1'
   || (() => { const h = new Date().getHours(); return h >= 17 || h < 8; })();
+
+// CARTO ダークベースマップのキー。2026年8月頃からキー必須になり、
+// 無し・無効だとタイルに "API KEY REQUIRED" の透かしが入る。
+// 無料枠は月500万タイル（https://carto.com/basemaps/apikey/ で即発行）。
+// リポジトリには置かず、GitHub Actions が secrets.CARTO_API_KEY で
+// __CARTO_API_KEY__ を置換する。未設定なら OSM 標準タイルにフォールバックする。
+const CARTO_API_KEY = '__CARTO_API_KEY__'.startsWith('__') ? '' : '__CARTO_API_KEY__';

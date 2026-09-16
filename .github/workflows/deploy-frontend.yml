@@ -29,7 +29,10 @@ jobs:
 
       - name: Deploy frontend
         run: |
-          sed "s|__API_BASE_URL__|${{ env.API_URL }}|g" \
+          # secrets.CARTO_API_KEY 未設定時は空文字に置換され、
+          # config.js 側の空判定で OSM タイルにフォールバックする。
+          sed -e "s|__API_BASE_URL__|${{ env.API_URL }}|g" \
+              -e "s|__CARTO_API_KEY__|${{ secrets.CARTO_API_KEY }}|g" \
             frontend/config.js > /tmp/config.js
 
           # 画像などの assets は7日間ブラウザキャッシュさせる。

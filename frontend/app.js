@@ -197,8 +197,12 @@ function initMap() {
     attributionControl: false,
   });
 
-  if (IS_NIGHT) {
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  // CARTO はキーが無いとタイルに "API KEY REQUIRED" の透かしが入るので、
+  // キー未設定時は夜間でも OSM 標準タイルにフォールバックする。
+  const useCarto = IS_NIGHT && !!CARTO_API_KEY;
+
+  if (useCarto) {
+    L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_API_KEY)}`, {
       maxZoom: 19,
       attribution: '© OSM © CARTO',
     }).addTo(map);
@@ -210,7 +214,7 @@ function initMap() {
   }
 
   L.control.zoom({ position: 'topleft' }).addTo(map);
-  L.control.attribution({ position: 'bottomleft', prefix: false }).addAttribution(IS_NIGHT ? '© OSM © CARTO' : '© OSM').addTo(map);
+  L.control.attribution({ position: 'bottomleft', prefix: false }).addAttribution(useCarto ? '© OSM © CARTO' : '© OSM').addTo(map);
 
   const visibleYoukai = youkaiData.filter((y) => !y.night_only || IS_NIGHT);
   visibleYoukai.forEach((y) => addYoukaiMarker(y));
