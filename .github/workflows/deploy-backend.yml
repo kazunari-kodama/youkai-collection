@@ -52,3 +52,23 @@ jobs:
             --stack-name ${{ env.SAM_STACK_NAME }} \
             --region ${{ env.AWS_REGION }} \
             --capabilities CAPABILITY_IAM
+
+      # MinimumCompressionSize のような RestApi 本体の設定は、ステージを再デプロイ
+      # しないと反映されない。SAM はルート定義が変わらないと Deployment を作らない
+      # ため、ここで明示的に打ち直す（変更が無い場合も冪等）。
+      - name: Redeploy API stage
+        run: |
+          API_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.SAM_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='YokaiApiId'].OutputValue" \
+            --output text)
+          if [ -z "$API_ID" ] || [ "$API_ID" = "None" ]; then
+            echo "YokaiApiId output が見つかりません" >&2
+            exit 1
+          fi
+          aws apigateway create-deployment \
+            --rest-api-id "$API_ID" \
+            --stage-name prod \
+            --region ${{ env.AWS_REGION }} \
+            --description "CI ${{ github.sha }}"

@@ -2317,6 +2317,13 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-ApiEndpoint'
 
+  # デプロイ後にステージを打ち直すため（deploy-backend.yml の Redeploy API stage）
+  YokaiApiId:
+    Description: API Gateway REST API ID
+    Value: !Ref YokaiApi
+    Export:
+      Name: !Sub '${AWS::StackName}-YokaiApiId'
+
   FrontendUrl:
     Description: CloudFront distribution URL
     Value: !Sub 'https://${FrontendDistribution.DomainName}'
