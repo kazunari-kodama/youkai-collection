@@ -1,13 +1,17 @@
-import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, KEKKAI_BARRIERS_TABLE, ARAGAMI_TABLE, NOROI_CURSES_TABLE } from '../lib/dynamodb';
+import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
+import { GetCommand, PutCommand, UpdateCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, KEKKAI_BARRIERS_TABLE, ARAGAMI_TABLE, NOROI_CURSES_TABLE, SPAWN_CAPTURES_TABLE } from '../lib/dynamodb';
 import { isInsideAnyBarrier } from '../lib/geometry';
-import { distanceMeters } from '../lib/distance';
+import { CAPTURE_RADIUS_M, distanceMeters } from '../lib/distance';
 import { deductJutsu } from '../lib/jutsuriyoku';
+import { getSpawnSecret } from '../lib/spawn/secret';
+import { getSpawnPool } from '../lib/spawn/pool';
+import { checkAndRecordMovement } from '../lib/spawn/movement';
+import { validateComputedCapture, REJECT_STATUS, type SpawnRejectCode } from '../lib/spawn/validate';
+import { SPAWN_CONFIG } from '../config/spawn';
 import type { YokaiDBItem } from '../types/youkai';
 import { YOURYOKU_RANKS, JUTSU_COST, rankBeatsYouryoku, NOROI_EFFECT_HOURS } from '../types/skill';
 
-const CAPTURE_RADIUS_M = 13;
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
 type ActionType = 'seal' | 'release' | 'bond';
@@ -24,12 +28,34 @@ interface CaptureRequest {
   rallyKey?:  string;
   qrCode?:    string;
   debug?:     boolean;
+  // ---- 計算配置（spawn_id があるときはこちらの経路） ----
+  spawn_id?:  string;
+  lat?:       number;
+  lng?:       number;
+  accuracy?:  number;
+}
+
+/** 封印・契約の本体に渡す値。固定配置と計算配置で共通 */
+interface CaptureContext {
+  deviceId:   string;
+  youkaiId:   string;
+  /** 結界判定に使う妖怪の位置（計算配置では出現座標） */
+  youkai:     Pick<YokaiDBItem, 'latitude' | 'longitude' | 'youryoku'>;
+  userLat:    number;
+  userLon:    number;
+  actionType: ActionType;
+  faction:    Faction;
+  job?:       string;
+  rallyKey?:  string;
+  debug?:     boolean;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   let body: CaptureRequest;
   try { body = JSON.parse(event.body ?? ''); }
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
+
+  if (body.spawn_id !== undefined) return captureComputed(body);
 
   const { deviceId, youkaiId, userLat, userLon } = body;
   if (!deviceId || !youkaiId || userLat == null || userLon == null) {
@@ -55,8 +81,126 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'QR code required' }) };
   }
 
+  return applyCapture({
+    deviceId, youkaiId, youkai, userLat, userLon,
+    actionType: body.actionType ?? 'seal',
+    faction:    body.faction    ?? 'exorcist',
+    job:        body.job,
+    rallyKey:   body.rallyKey,
+    debug:      body.debug,
+  });
+};
+
+// ---- 計算配置の捕獲 --------------------------------------------------------
+
+function reject(code: SpawnRejectCode, extra: Record<string, unknown> = {}): APIGatewayProxyResult {
+  return { statusCode: REJECT_STATUS[code], headers: HEADERS, body: JSON.stringify({ error: code, code, ...extra }) };
+}
+
+/**
+ * spawn_id をサーバー側で計算し直して検証し、通ったら固定配置と同じ applyCapture で図鑑に反映する。
+ * 二重取りは「ユーザー × spawn_id」の条件付き書き込みで防ぐ。
+ */
+async function captureComputed(body: CaptureRequest): Promise<APIGatewayProxyResult> {
+  const { deviceId } = body;
   const actionType = body.actionType ?? 'seal';
-  const faction    = body.faction    ?? 'exorcist';
+  if (!deviceId || typeof deviceId !== 'string') {
+    return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
+  }
+  if (actionType !== 'seal' && actionType !== 'bond') {
+    return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Unsupported actionType' }) };
+  }
+
+  const nowMs = Date.now();
+  const [secret, pool] = await Promise.all([getSpawnSecret(), getSpawnPool(nowMs)]);
+
+  // 1〜5: 形式・slot の実在・時間枠・距離・位置精度
+  const v = validateComputedCapture(
+    secret,
+    { spawnId: body.spawn_id, lat: body.lat, lng: body.lng, accuracy: body.accuracy, yokaiId: body.youkaiId },
+    pool.tableFor,
+    nowMs / 1000,
+  );
+  if (!v.ok) return reject(v.code, v.distance != null ? { distance: Math.round(v.distance) } : {});
+  const { spawn } = v;
+  const lat = body.lat as number;
+  const lng = body.lng as number;
+
+  // 6: 移動速度
+  const mv = await checkAndRecordMovement(deviceId, lat, lng, nowMs);
+  if (!mv.ok) {
+    console.warn(JSON.stringify({
+      event: 'SPEED_ANOMALY', deviceId, spawn_id: spawn.spawn_id,
+      speed_kmh: Math.round(mv.speedKmh), lat, lng,
+    }));
+    return reject('SPEED_ANOMALY');
+  }
+
+  // 二重取り防止（ユーザー × spawn_id）
+  const recordKey = { deviceId, spawn_id: spawn.spawn_id };
+  try {
+    await ddb.send(new PutCommand({
+      TableName: SPAWN_CAPTURES_TABLE,
+      Item: {
+        ...recordKey,
+        yokai_id: spawn.yokai_id,
+        captured_at: new Date(nowMs).toISOString(),
+        userLat: lat, userLon: lng, accuracy: body.accuracy,
+        ttl: Math.floor(nowMs / 1000) + SPAWN_CONFIG.CAPTURE_RECORD_TTL_SECONDS,
+      },
+      ConditionExpression: 'attribute_not_exists(spawn_id)',
+    }));
+  } catch (e) {
+    if ((e as { name?: string }).name === 'ConditionalCheckFailedException') return reject('ALREADY_CAPTURED');
+    throw e;
+  }
+  const rollback = () => ddb.send(new DeleteCommand({ TableName: SPAWN_CAPTURES_TABLE, Key: recordKey }))
+    .catch((e) => console.error('spawn capture rollback failed', e));
+
+  let result: APIGatewayProxyResult;
+  try {
+    const yRes = await ddb.send(new GetCommand({
+      TableName: YOUKAI_TABLE,
+      Key: { yokai_id: spawn.yokai_id },
+      ProjectionExpression: 'youryoku',
+    }));
+    if (!yRes.Item) { await rollback(); return reject('INVALID_SPAWN'); }
+
+    result = await applyCapture({
+      deviceId,
+      youkaiId: spawn.yokai_id,
+      youkai: { latitude: spawn.lat, longitude: spawn.lng, youryoku: yRes.Item.youryoku },
+      userLat: lat, userLon: lng,
+      actionType,
+      faction: body.faction ?? 'exorcist',
+      job: body.job,
+      debug: body.debug,
+    });
+  } catch (e) {
+    await rollback();
+    throw e;
+  }
+
+  const resBody = JSON.parse(result.body) as Record<string, unknown>;
+  // 図鑑に既に在る妖怪（封印済み・契約済み）: 出現は消費し、再会として成功を返す（報酬なし）
+  if (result.statusCode === 409) {
+    return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
+      success: true, already_in_zukan: true, spawn_id: spawn.spawn_id, youkaiId: spawn.yokai_id,
+    })};
+  }
+  // 術力不足などで図鑑に反映できなかったときは、出現を消費しない
+  if (result.statusCode !== 200) {
+    await rollback();
+    return result;
+  }
+  return { ...result, body: JSON.stringify({ ...resBody, spawn_id: spawn.spawn_id, youkaiId: spawn.yokai_id }) };
+}
+
+// ---- 封印・契約・解放（固定配置・計算配置で共通） ------------------------------
+
+async function applyCapture(ctx: CaptureContext): Promise<APIGatewayProxyResult> {
+  const { deviceId, youkaiId, youkai, userLat, userLon, actionType, faction } = ctx;
+  const body = { job: ctx.job, rallyKey: ctx.rallyKey, debug: ctx.debug };
 
   const existingRes = await ddb.send(new GetCommand({ TableName: CAPTURES_TABLE, Key: { deviceId, youkaiId } }));
   const existing    = existingRes.Item;

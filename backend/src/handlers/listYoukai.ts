@@ -1,5 +1,5 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { YOUKAI_TABLE, IMAGES_BASE_URL, toCameraUrl, toThumbUrl, scanAll } from '../lib/dynamodb';
+import { YOUKAI_TABLE, scanAll, toYokaiListItem } from '../lib/dynamodb';
 import type { YokaiDBItem, YokaiListItem } from '../types/youkai';
 
 const HEADERS = {
@@ -15,16 +15,7 @@ export const handler: APIGatewayProxyHandler = async () => {
     ExpressionAttributeNames: { '#n': 'name', '#rq': 'require_qr' },
   });
 
-  const items: YokaiListItem[] = scanned.map((item) => ({
-    id: item.yokai_id,
-    name: item.name,
-    lat: item.latitude,
-    lon: item.longitude,
-    thumb_url: toThumbUrl(item.images, IMAGES_BASE_URL),
-    camera_url: toCameraUrl(item.images, IMAGES_BASE_URL),
-    ...(item.night_only ? { night_only: true } : {}),
-    ...(item.require_qr ? { require_qr: true } : {}),
-  }));
+  const items: YokaiListItem[] = scanned.map(toYokaiListItem);
 
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify(items) };
 };

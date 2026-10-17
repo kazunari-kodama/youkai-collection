@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import type { ScanCommandInput } from '@aws-sdk/lib-dynamodb';
+import type { YokaiDBItem, YokaiListItem } from '../types/youkai';
 
 const client = new DynamoDBClient({});
 export const ddb = DynamoDBDocumentClient.from(client);
@@ -48,6 +49,7 @@ export const YAMABUSHI_STONES_TABLE   = process.env.YAMABUSHI_STONES_TABLE!;
 export const KITOSHI_PRAYERS_TABLE    = process.env.KITOSHI_PRAYERS_TABLE!;
 export const NOROI_CURSES_TABLE       = process.env.NOROI_CURSES_TABLE!;
 export const SHOUJUTSU_TABLE          = process.env.SHOUJUTSU_TABLE!;
+export const SPAWN_CAPTURES_TABLE     = process.env.SPAWN_CAPTURES_TABLE!;
 
 /** images[0] → camera の S3 キー
  *  "youkai/xxx_camera.png"  → "youkai/xxx_camera.png"  (direct key, new format)
@@ -76,4 +78,18 @@ export function toThumbUrl(images: string[] | undefined, base: string): string {
   const key = toCameraKey(images);
   if (!key) return '';
   return `${base}/thumbs/${key.slice('youkai/'.length).replace(/\.[^.]+$/, '')}.webp`;
+}
+
+/** kodama_db の1件 → GET /youkai の1件（固定配置の表示項目） */
+export function toYokaiListItem(item: YokaiDBItem): YokaiListItem {
+  return {
+    id: item.yokai_id,
+    name: item.name,
+    lat: item.latitude,
+    lon: item.longitude,
+    thumb_url: toThumbUrl(item.images, IMAGES_BASE_URL),
+    camera_url: toCameraUrl(item.images, IMAGES_BASE_URL),
+    ...(item.night_only ? { night_only: true } : {}),
+    ...(item.require_qr ? { require_qr: true } : {}),
+  };
 }
