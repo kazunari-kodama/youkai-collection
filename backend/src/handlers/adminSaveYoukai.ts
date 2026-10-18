@@ -1,5 +1,5 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, YOUKAI_TABLE, CORE_TABLE } from '../lib/dynamodb';
 
 const HEADERS = {
@@ -27,8 +27,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'yokai_id required' }) };
   }
 
+  // 管理画面が扱わない項目（prefecture, rarity, illustrator など）は既存の値を引き継ぐ。
+  // PutItem は全置換なので、引き継がないと保存のたびに消えてしまう。
+  const existing = (await ddb.send(new GetCommand({
+    TableName: YOUKAI_TABLE, Key: { yokai_id: yokai_id.trim() },
+  }))).Item ?? {};
+  const MANAGED = [
+    'name', 'kana', 'notes', 'appearance', 'region_detail', 'rally_key',
+    'latitude', 'longitude', 'night_only', 'require_qr', 'is_original', 'youryoku',
+    'images', 'image_types', 'image_captions', 'regions', 'category_tags', 'keywords',
+  ];
+  const kept = Object.fromEntries(Object.entries(existing).filter(([k]) => !MANAGED.includes(k)));
+
   // Remove undefined/empty optional fields so DynamoDB doesn't store empty strings
-  const item: Record<string, unknown> = { yokai_id: yokai_id.trim() };
+  const item: Record<string, unknown> = { ...kept, yokai_id: yokai_id.trim() };
   const stringFields = ['name', 'kana', 'notes', 'appearance', 'region_detail', 'rally_key'] as const;
   for (const f of stringFields) {
     const v = body[f];
@@ -40,6 +52,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (body.night_only === true) item.night_only = true;
   if (body.require_qr === true) item.require_qr = true;
   if (body.is_original === true) item.is_original = true;
+  if (typeof body.youryoku === 'number' && body.youryoku >= 1 && body.youryoku <= 5) item.youryoku = body.youryoku;
 
   const arrayFields = ['images', 'image_types', 'image_captions', 'regions', 'category_tags', 'keywords'] as const;
   for (const f of arrayFields) {

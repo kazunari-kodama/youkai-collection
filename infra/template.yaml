@@ -884,6 +884,7 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - dynamodb:GetItem
                 - dynamodb:PutItem
               Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
       Events:

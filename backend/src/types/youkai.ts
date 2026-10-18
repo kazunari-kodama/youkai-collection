@@ -21,6 +21,8 @@ export interface YokaiDBItem {
   prefecture?: string; // 都道府県名（scripts/add-prefecture.mjs が付与）
   /** 計算配置の出現率に使うレア度。省略時は common 扱い（config/spawn.ts） */
   rarity?: 'common' | 'uncommon' | 'rare' | 'legendary';
+  /** イラストのクレジット（作者名/ハンドル）。外部イラストレーターの作品のみ */
+  illustrator?: string;
 }
 
 /** GET /youkai レスポンスの1件 */
@@ -54,6 +56,7 @@ export interface YokaiDetail {
   keywords: string[];
   rally_key?: string;
   require_qr?: boolean;
+  illustrator?: string;
 }
 
 /** youkai-captures テーブルの1レコード */

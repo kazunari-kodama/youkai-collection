@@ -878,6 +878,11 @@ async function showDetail(youkaiId) {
   metaEl.style.cursor = 'pointer';
   metaEl.onclick = () => { closeDetail(); map.flyTo([detail.lat, detail.lon], 17); };
 
+  // 外部イラストレーターの作品はクレジットを出す（契約上の表記義務）
+  const creditEl = document.getElementById('detail-credit');
+  creditEl.textContent = detail.illustrator ? `絵：${detail.illustrator}` : '';
+  creditEl.style.display = detail.illustrator ? '' : 'none';
+
   const img = document.getElementById('detail-img');
   if (detail.camera_url) {
     img.src = detail.camera_url;
