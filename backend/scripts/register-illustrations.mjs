@@ -6,7 +6,7 @@
  *       no, yokai_id(先頭8桁可), name, kana, credit, status(検収済/未検収), youryoku,
  *       file_hint（ファイル名の手がかり。| 区切り、= で始まるものはファイル名の完全一致）,
  *       file（ファイルを直接指定する場合のパス。「ダウンロード」からの相対パス可）, note,
- *       lat, lon（配置データの座標が伝承地とずれているときの上書き）
+ *       lat, lon, pref, place（配置データの座標・県・地名が伝承地とずれているときの上書き）
  *   - 配置データ zenkokuka-candidates/placement.json（道路にスナップ済みの座標）
  *   - youkai_core（伝承文）
  *   - 納品ファイル（既定はユーザーの「ダウンロード」フォルダを3階層まで探す）
@@ -177,9 +177,9 @@ async function register(row, pl, file) {
     appearance: notes,
     latitude: row.lat ? Number(row.lat) : pl.lat,
     longitude: row.lon ? Number(row.lon) : pl.lon,
-    prefecture: pl.pref,
-    regions: [pl.place || pl.pref],
-    region_detail: `${pl.pref}${pl.place ?? ''}`,
+    prefecture: row.pref || pl.pref,
+    regions: [row.place || pl.place || row.pref || pl.pref],
+    region_detail: `${row.pref || pl.pref}${row.place || pl.place || ''}`,
     youryoku: Number(row.youryoku) || 2,
     images: [cameraKey],
     image_types: ['camera'],
