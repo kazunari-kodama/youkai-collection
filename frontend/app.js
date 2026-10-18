@@ -44,6 +44,8 @@ let _wakeLock = null;
 
 const state = {
   playerPos: null,
+  playerAccuracy: null, // m（GPS の coords.accuracy）。計算配置の捕獲で送る
+  pendingSpawn: null,   // 計算配置から開いた封印モーダルの出現
   debugMode: false,
   initialCentered: false,
   pendingUnseal: null,  // YokaiDetail
@@ -370,9 +372,11 @@ async function handleMarkerTap(youkai) {
 }
 
 // --- Player position ----------------------------------------
-function updatePlayerPosition(lat, lon) {
+function updatePlayerPosition(lat, lon, accuracy) {
   _onWalkPosition(lat, lon);
   state.playerPos = { lat, lon };
+  // デバッグ（dev のみ）の地図クリックは精度を持たないので良好扱い
+  state.playerAccuracy = accuracy ?? (state.debugMode ? 5 : null);
   _checkPrayerProximity(lat, lon);
   _checkCleanse(lat, lon);
   if (!state.initialCentered) {
@@ -420,6 +424,9 @@ function updatePlayerPosition(lat, lon) {
     }
   });
 
+  _checkComputedSpawnsInRange(lat, lon);
+  _maybeFetchSpawns(lat, lon);
+
   // Rally yokai proximity check
   if (rallyState.active) {
     Object.values(rallyMarkers).forEach(({ marker, data }) => {
@@ -455,7 +462,7 @@ function startGeolocation() {
   }
   setStatus('位置情報取得中…');
   navigator.geolocation.watchPosition(
-    (pos) => { if (!state.debugMode) updatePlayerPosition(pos.coords.latitude, pos.coords.longitude); },
+    (pos) => { if (!state.debugMode) updatePlayerPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy); },
     (err) => {
       console.warn('Geolocation error:', err);
       setStatus(IS_DEV ? '位置情報拒否/失敗 — デバッグONで地図クリック' : '位置情報を取得できませんでした');
@@ -486,22 +493,25 @@ function isAnyModalOpen() {
 
 const _unsealing = new Set();
 
-async function triggerUnseal(youkaiId) {
+/** spawn: 計算配置から開くときの出現（固定配置は null）。図鑑に在る妖怪でも出現なら開ける（再会） */
+async function triggerUnseal(youkaiId, spawn = null) {
   const at = capturedIds.get(youkaiId);
-  if ((at === 'seal' || at === 'bond') || rallyState.capturedIds.has(youkaiId) || _unsealing.has(youkaiId)) return;
-  _unsealing.add(youkaiId);
+  const lockKey = spawn ? spawn.spawn_id : youkaiId;
+  if ((!spawn && (at === 'seal' || at === 'bond')) || rallyState.capturedIds.has(youkaiId) || _unsealing.has(lockKey)) return;
+  _unsealing.add(lockKey);
 
   let detail;
   try {
     detail = await apiGet(`/youkai/${encodeURIComponent(youkaiId)}`);
   } catch {
     showToast('データ取得失敗');
-    _unsealing.delete(youkaiId);
+    _unsealing.delete(lockKey);
     return;
   }
-  _unsealing.delete(youkaiId);
+  _unsealing.delete(lockKey);
 
   state.pendingUnseal = detail;
+  state.pendingSpawn = spawn;
 
   const talisman = document.getElementById('unseal-talisman');
   const nameEl = document.getElementById('unseal-name');
@@ -518,8 +528,9 @@ async function triggerUnseal(youkaiId) {
 
   document.getElementById('unseal-name').textContent = detail.name;
   document.getElementById('unseal-desc').textContent = detail.notes || detail.appearance || '(伝承不明)';
+  const [metaLat, metaLon] = spawn ? [spawn.lat, spawn.lng] : [detail.lat, detail.lon];
   document.getElementById('unseal-meta').textContent =
-    `北緯 ${detail.lat.toFixed(5)}  東経 ${detail.lon.toFixed(5)}`;
+    `北緯 ${metaLat.toFixed(5)}  東経 ${metaLon.toFixed(5)}`;
 
   const btn = document.getElementById('btn-confirm-capture');
   btn.disabled = false;
@@ -572,6 +583,7 @@ async function confirmCapture() {
   btn.disabled = true;
   btn.textContent = isSupernatural ? '契り結び中…' : '封じ込め中…';
 
+  const spawn = state.pendingSpawn;
   const captureBody = {
     deviceId: DEVICE_ID,
     youkaiId: detail.id,
@@ -581,6 +593,15 @@ async function confirmCapture() {
     faction: currentFaction ?? 'exorcist',
     job: currentRole,
   };
+  if (spawn) {
+    // 計算配置: 判定はすべてサーバー側。位置精度は必ず送る
+    Object.assign(captureBody, {
+      spawn_id: spawn.spawn_id,
+      lat: state.playerPos.lat,
+      lng: state.playerPos.lon,
+      accuracy: state.playerAccuracy,
+    });
+  }
   if (detail.rally_key) captureBody.rallyKey = detail.rally_key;
   if (state.pendingQrCode) captureBody.qrCode = state.pendingQrCode;
 
@@ -599,7 +620,16 @@ async function confirmCapture() {
     document.getElementById('unseal-talisman').classList.remove('breaking', 'sealing');
     document.getElementById('unseal-name').classList.remove('appear');
     if (timg2) timg2.src = 'assets/images/seal/ofuda-break.webp';
-    if (result.status === 403) {
+    const spawnMsg = spawn && SPAWN_REJECT_MESSAGES[result.data?.code];
+    if (spawnMsg) {
+      showToast(result.data.code === 'TOO_FAR' && result.data.distance != null
+        ? `${spawnMsg}（残り ${result.data.distance}m）` : spawnMsg);
+      // もう捕まえられない出現は地図から下げる
+      if (['INVALID_SPAWN', 'EXPIRED', 'ALREADY_CAPTURED'].includes(result.data.code)) {
+        _removeComputedSpawn(spawn.spawn_id);
+        closeUnseal();
+      }
+    } else if (result.status === 403) {
       showToast('位置が離れすぎています');
     } else if (result.status === 402) {
       const cur = result.data?.current ?? 0;
@@ -615,6 +645,15 @@ async function confirmCapture() {
 
   const isRally   = !!detail.rally_key;
   const resData   = result.data ?? {};
+
+  if (spawn) {
+    _removeComputedSpawn(spawn.spawn_id);
+    if (resData.already_in_zukan) {
+      closeUnseal();
+      showToast(`「${detail.name}」と再び相見えた（既に図鑑に在り）`);
+      return;
+    }
+  }
   const isSealed  = resData.sealed === true;
   const inProgress = resData.sealed === false;
 
@@ -709,7 +748,117 @@ function closeUnseal() {
   document.getElementById('unseal-modal').classList.remove('show');
   state.pendingUnseal = null;
   state.pendingQrCode = null;
+  state.pendingSpawn = null;
 }
+
+// --- 計算配置（computed spawns） ------------------------------
+// 出現の計算はサーバーだけが行う。ここでは GET /spawns の結果を表示するだけ。
+// 固定配置は従来どおり GET /youkai で描画し、/spawns の source:'fixed' は使わない。
+
+const SPAWN_REFETCH_MOVE_M = 50;
+const SPAWN_REFETCH_MS     = 60_000;
+const SPAWN_REJECT_MESSAGES = {
+  INVALID_SPAWN:    'その気配は、既に霧と消えたり',
+  EXPIRED:          '刻は過ぎ、妖は闇へと還りぬ',
+  TOO_FAR:          '未だ遠し。今少し歩み寄られよ',
+  LOW_ACCURACY:     '己が居所、定まらず。空の開けし処にて暫し待たれよ',
+  SPEED_ANOMALY:    '足取り常ならず。暫し刻を置かれよ',
+  ALREADY_CAPTURED: 'この妖とは、既に縁を結びたり',
+};
+
+let computedSpawns = new Map(); // spawn_id -> { marker, data }
+const _spawnFetch = { at: 0, lat: null, lon: null, busy: false };
+
+function _maybeFetchSpawns(lat, lon) {
+  if (_spawnFetch.busy) return;
+  const moved = _spawnFetch.lat == null
+    ? Infinity : distanceMeters(_spawnFetch.lat, _spawnFetch.lon, lat, lon);
+  if (moved < SPAWN_REFETCH_MOVE_M && Date.now() - _spawnFetch.at < SPAWN_REFETCH_MS) return;
+  fetchSpawns(lat, lon);
+}
+
+async function fetchSpawns(lat, lon) {
+  _spawnFetch.busy = true;
+  try {
+    const q = `lat=${lat.toFixed(6)}&lng=${lon.toFixed(6)}&deviceId=${encodeURIComponent(DEVICE_ID)}`;
+    const { spawns } = await apiGet(`/spawns?${q}`);
+    Object.assign(_spawnFetch, { at: Date.now(), lat, lon });
+    const keep = new Set();
+    for (const s of spawns) {
+      if (s.source !== 'computed' || s.captured) continue;
+      if (Date.parse(s.expires_at) <= Date.now()) continue;
+      keep.add(s.spawn_id);
+      if (!computedSpawns.has(s.spawn_id)) _addComputedSpawnMarker(s);
+    }
+    // 範囲外になった出現・捕獲済みになった出現は下げる
+    for (const id of [...computedSpawns.keys()]) if (!keep.has(id)) _removeComputedSpawn(id);
+    if (state.playerPos) _checkComputedSpawnsInRange(state.playerPos.lat, state.playerPos.lon);
+  } catch (e) {
+    // 取得失敗は次の機会に再取得（60秒後 or 50m 移動後）
+    Object.assign(_spawnFetch, { at: Date.now(), lat, lon });
+    console.warn('[spawns] fetch failed', e);
+  } finally {
+    _spawnFetch.busy = false;
+  }
+}
+
+function _addComputedSpawnMarker(spawn) {
+  const youkai = youkaiData.find((y) => y.id === spawn.yokai_id);
+  if (!youkai || !map) return;
+  const at = capturedIds.get(spawn.yokai_id);
+  const known = at === 'seal' || at === 'bond';
+  const icon = L.divIcon({
+    className: 'youkai-icon-wrapper',
+    html: `<div class="hitodama-marker computed-spawn${known ? ' known' : ''}" data-spawn="${_attr(spawn.spawn_id)}">` +
+      `<img src="assets/images/hitodama.webp" alt=""></div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+  const marker = L.marker([spawn.lat, spawn.lng], { icon, zIndexOffset: -100 }).addTo(map);
+  marker.on('click', () => handleSpawnTap(spawn));
+  computedSpawns.set(spawn.spawn_id, { marker, data: spawn });
+}
+
+function _removeComputedSpawn(spawnId) {
+  const item = computedSpawns.get(spawnId);
+  if (!item) return;
+  map.removeLayer(item.marker);
+  computedSpawns.delete(spawnId);
+}
+
+function _pruneExpiredSpawns() {
+  const now = Date.now();
+  for (const [id, { data }] of [...computedSpawns]) {
+    if (Date.parse(data.expires_at) <= now) _removeComputedSpawn(id);
+  }
+}
+
+function _checkComputedSpawnsInRange(lat, lon) {
+  for (const { marker, data } of computedSpawns.values()) {
+    const el = marker.getElement()?.querySelector('.hitodama-marker');
+    if (!el) continue;
+    const inRange = distanceMeters(lat, lon, data.lat, data.lng) <= CAPTURE_RADIUS_M;
+    el.classList.toggle('in-range', inRange);
+    // 図鑑に未だ無い妖怪だけ自動で封印画面を開く（在るものはタップで再会）
+    const at = capturedIds.get(data.yokai_id);
+    if (inRange && at !== 'seal' && at !== 'bond' && !isAnyModalOpen()) triggerUnseal(data.yokai_id, data);
+  }
+}
+
+async function handleSpawnTap(spawn) {
+  if (!state.playerPos) {
+    showToast('まず現在地を取得してください');
+    return;
+  }
+  const d = distanceMeters(state.playerPos.lat, state.playerPos.lon, spawn.lat, spawn.lng);
+  if (d <= CAPTURE_RADIUS_M) await triggerUnseal(spawn.yokai_id, spawn);
+  else showToast(`${SPAWN_REJECT_MESSAGES.TOO_FAR}（残り ${Math.round(d)}m）`);
+}
+
+setInterval(() => {
+  _pruneExpiredSpawns();
+  if (state.playerPos) _maybeFetchSpawns(state.playerPos.lat, state.playerPos.lon);
+}, 15_000);
 
 // --- Detail modal -------------------------------------------
 async function showDetail(youkaiId) {

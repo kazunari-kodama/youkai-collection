@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/spawnEngine.test.ts test/captureComputed.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
@@ -13,12 +14,15 @@
     "@aws-sdk/lib-dynamodb": "^3.0.0",
     "@aws-sdk/s3-request-presigner": "^3.0.0",
     "esbuild": "^0.28.0",
+    "ngeohash": "^0.6.3",
     "stripe": "^22.3.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.0",
+    "@types/ngeohash": "^0.6.8",
     "@types/node": "^20.0.0",
     "sharp": "^0.35.4",
+    "tsx": "^4.23.15",
     "typescript": "^5.0.0"
   }
 }

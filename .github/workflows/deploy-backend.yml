@@ -37,6 +37,12 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      - name: Typecheck and unit tests
+        working-directory: backend
+        run: |
+          npm run typecheck
+          npm test
+
       - uses: aws-actions/setup-sam@v2
         with:
           use-installer: true

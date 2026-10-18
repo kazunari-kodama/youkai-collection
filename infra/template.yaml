@@ -43,6 +43,7 @@ Globals:
         KITOSHI_PRAYERS_TABLE:  !Ref KitoshiPrayersTable
         NOROI_CURSES_TABLE:     !Ref NoroiCursesTable
         SHOUJUTSU_TABLE:        !Ref ShoujutsuTable
+        SPAWN_CAPTURES_TABLE:   !Ref SpawnCapturesTable
 
 Resources:
   # API Gateway
@@ -53,6 +54,18 @@ Resources:
       # レスポンスを gzip 圧縮する。/youkai は 44KB あり、モバイル回線では
       # 効果が大きい。1KB 未満は圧縮してもオーバーヘッドの方が勝るので除外。
       MinimumCompressionSize: 1024
+      # 計算配置の API はステージ全体の上限で守る（API Gateway REST のスロットリングは
+      # クライアント単位ではなくメソッド単位の合計。1クライアントあたりの目安は
+      # フロントの取得間隔（/spawns は50m移動 or 60秒ごと）で担保している）
+      MethodSettings:
+        - ResourcePath: '/~1spawns'
+          HttpMethod: GET
+          ThrottlingRateLimit: 50
+          ThrottlingBurstLimit: 100
+        - ResourcePath: '/~1capture'
+          HttpMethod: POST
+          ThrottlingRateLimit: 20
+          ThrottlingBurstLimit: 40
       Cors:
         AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Admin-Key,X-System-Key,Authorization'"
@@ -268,6 +281,28 @@ Resources:
             NonKeyAttributes:
               - actionType
 
+  # SpawnCaptures Table (計算配置の捕獲記録 — ユーザー × spawn_id で二重取りを防ぐ)
+  SpawnCapturesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: youkai-spawn-captures
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: spawn_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+        - AttributeName: spawn_id
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
   # Aragami Table (呪術師 魂振)
   AragamiTable:
     Type: AWS::DynamoDB::Table
@@ -457,13 +492,26 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:GetItem
+                - dynamodb:Scan
               Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource: !GetAtt YoukaiCoreTable.Arn
             - Effect: Allow
               Action:
                 - dynamodb:GetItem
                 - dynamodb:PutItem
                 - dynamodb:UpdateItem
               Resource: !GetAtt CapturesTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+              Resource: !GetAtt SpawnCapturesTable.Arn
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/youkai/spawn-secret'
             - Effect: Allow
               Action:
                 - dynamodb:GetItem
@@ -488,6 +536,46 @@ Resources:
             RestApiId: !Ref YokaiApi
             Path: /capture
             Method: POST
+
+  # Lambda: GET /spawns (計算配置 + 周辺の固定配置)
+  GetSpawnsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/getSpawns.ts
+    Properties:
+      CodeUri: ../backend/
+      Handler: src/handlers/getSpawns.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Scan]
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kodama_db'
+                - !GetAtt YoukaiCoreTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:BatchGetItem]
+              Resource:
+                - !GetAtt CapturesTable.Arn
+                - !GetAtt SpawnCapturesTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/youkai/spawn-secret'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref YokaiApi
+            Path: /spawns
+            Method: GET
 
   # Lambda: DELETE /player/reset (職業選び直し: 全進捗リセット)
   ResetPlayerFunction:

@@ -18,6 +18,9 @@ export interface YokaiDBItem {
   night_only?: boolean;
   require_qr?: boolean;
   youryoku?: number;   // 1-5（省略時は1扱い）
+  prefecture?: string; // 都道府県名（scripts/add-prefecture.mjs が付与）
+  /** 計算配置の出現率に使うレア度。省略時は common 扱い（config/spawn.ts） */
+  rarity?: 'common' | 'uncommon' | 'rare' | 'legendary';
 }
 
 /** GET /youkai レスポンスの1件 */
