@@ -650,7 +650,7 @@ async function confirmCapture() {
     _removeComputedSpawn(spawn.spawn_id);
     if (resData.already_in_zukan) {
       closeUnseal();
-      showToast(`「${detail.name}」と再び相見えた（既に図鑑に在り）`);
+      showToast(`「${detail.name}」と再び相見え、修練を積んだ（経験 +${resData.exp_gained ?? 0}）`);
       return;
     }
   }
@@ -753,6 +753,7 @@ function closeUnseal() {
 
 // --- 計算配置（computed spawns） ------------------------------
 // 出現の計算はサーバーだけが行う。ここでは GET /spawns の結果を表示するだけ。
+// 計算配置は迷霊（妖力1）の雑魚妖怪のみで、1回で封印でき、図鑑に在る妖怪でも経験値が入る。
 // 固定配置は従来どおり GET /youkai で描画し、/spawns の source:'fixed' は使わない。
 
 const SPAWN_REFETCH_MOVE_M = 50;
@@ -805,11 +806,9 @@ async function fetchSpawns(lat, lon) {
 function _addComputedSpawnMarker(spawn) {
   const youkai = youkaiData.find((y) => y.id === spawn.yokai_id);
   if (!youkai || !map) return;
-  const at = capturedIds.get(spawn.yokai_id);
-  const known = at === 'seal' || at === 'bond';
   const icon = L.divIcon({
     className: 'youkai-icon-wrapper',
-    html: `<div class="hitodama-marker computed-spawn${known ? ' known' : ''}" data-spawn="${_attr(spawn.spawn_id)}">` +
+    html: `<div class="hitodama-marker computed-spawn" data-spawn="${_attr(spawn.spawn_id)}">` +
       `<img src="assets/images/hitodama.webp" alt=""></div>`,
     iconSize: [26, 26],
     iconAnchor: [13, 13],
@@ -839,9 +838,8 @@ function _checkComputedSpawnsInRange(lat, lon) {
     if (!el) continue;
     const inRange = distanceMeters(lat, lon, data.lat, data.lng) <= CAPTURE_RADIUS_M;
     el.classList.toggle('in-range', inRange);
-    // 図鑑に未だ無い妖怪だけ自動で封印画面を開く（在るものはタップで再会）
-    const at = capturedIds.get(data.yokai_id);
-    if (inRange && at !== 'seal' && at !== 'bond' && !isAnyModalOpen()) triggerUnseal(data.yokai_id, data);
+    // 計算配置は経験値稼ぎの雑魚妖怪。図鑑に在るものも含め、近づけば封印画面を開く
+    if (inRange && !isAnyModalOpen()) triggerUnseal(data.yokai_id, data);
   }
 }
 

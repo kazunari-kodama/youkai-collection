@@ -7,7 +7,8 @@
  *   - kodama_db にも存在する（ゲームの表示・詳細・図鑑は kodama_db を元にしているため。
  *     kodama_db に無い妖怪を出すと、詳細取得が 404 になり図鑑にも並ばない）
  *   - rally_key / require_qr / night_only を持たない（イベント・QR・夜限定は固定配置専用）
- *   - rarity の重みが 0 でない（legendary は出さない）
+ *   - rarity の重みが 0 でない（現在は common のみ）
+ *   - 妖力（youryoku）が MAX_YOURYOKU 以下（現在は迷霊のみ。1回で捕まえられる雑魚妖怪）
  */
 import { SPAWN_CONFIG, type Rarity } from '../../config/spawn';
 import { scanAll, YOUKAI_TABLE, CORE_TABLE } from '../dynamodb';
@@ -51,6 +52,7 @@ export function buildCandidates(coreItems: CoreItem[], kodamaItems: YokaiDBItem[
     if (c.rally_key || k.rally_key || c.require_qr || k.require_qr || c.night_only || k.night_only) continue;
     const rarity = toRarity(c.rarity, k.rarity);
     if ((SPAWN_CONFIG.RARITY_WEIGHTS[rarity] ?? 0) <= 0) continue;
+    if ((k.youryoku ?? 1) > SPAWN_CONFIG.MAX_YOURYOKU) continue;
     out.push({
       yokai_id: c.yokai_id,
       rarity,
@@ -86,7 +88,7 @@ async function load(): Promise<SpawnPool> {
     }),
     scanAll<YokaiDBItem>({
       TableName: YOUKAI_TABLE,
-      ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, night_only, require_qr, rally_key, prefecture, regions, rarity',
+      ProjectionExpression: 'yokai_id, #n, latitude, longitude, images, night_only, require_qr, rally_key, prefecture, regions, rarity, youryoku',
       ExpressionAttributeNames: { '#n': 'name' },
     }),
   ]);

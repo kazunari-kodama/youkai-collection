@@ -109,18 +109,25 @@ test('legendary は計算配置に出ない', () => {
   const picked = new Set<string>();
   for (const gh of sampleCells(20000)) for (const s of computeCell(SECRET, gh, HW, tableFor)) picked.add(s.yokai_id);
   assert.ok(!picked.has('legend-a'));
-  assert.ok(picked.has('common-a') && picked.has('rare-a'));
+  assert.ok(picked.has('common-a') && picked.has('common-b'));
   // 抽選表にも載らない
   assert.ok(!buildTable(CANDIDATES, { prefecture: '東京都', hourWindow: HW }).some((e) => e.yokai_id === 'legend-a'));
+});
+
+test('計算配置は common だけ（雑魚妖怪）', () => {
+  const picked = new Set<string>();
+  for (const gh of sampleCells(20000)) for (const s of computeCell(SECRET, gh, HW, tableFor)) picked.add(s.yokai_id);
+  assert.deepEqual([...picked].sort(), ['common-a', 'common-b']);
 });
 
 test('レア度の重みと地域の倍率', () => {
   const table = buildTable(CANDIDATES, { prefecture: '東京都', hourWindow: HW });
   const w = Object.fromEntries(table.map((e) => [e.yokai_id, e.weight]));
-  assert.equal(w['common-a'], 60 * SPAWN_CONFIG.REGION_MATCH_MULTIPLIER);
-  assert.equal(w['common-b'], 60);
-  assert.equal(w['uncommon-a'], 28);
-  assert.equal(w['rare-a'], 12);
+  const W = SPAWN_CONFIG.RARITY_WEIGHTS;
+  assert.equal(w['common-a'], W.common * SPAWN_CONFIG.REGION_MATCH_MULTIPLIER);
+  assert.equal(w['common-b'], W.common);
+  assert.equal(w['uncommon-a'], W.uncommon || undefined);
+  assert.equal(w['rare-a'], W.rare || undefined);
   const none = buildTable(CANDIDATES, { prefecture: null, hourWindow: HW });
   assert.equal(none.find((e) => e.yokai_id === 'common-a')?.weight, 60);
 });
@@ -135,21 +142,22 @@ test('weightedPick の分布はおおむね重みどおり', () => {
   assert.equal(weightedPick([], hmac(SECRET, 'x')), null);
 });
 
-test('buildCandidates: kodama_db に無いもの・ラリー・QR・legendary を除き、rarity 未設定は common', () => {
+test('buildCandidates: 迷霊（妖力1）の common だけ。kodama_db に無いもの・ラリー・QR を除く', () => {
   const core = [
-    { yokai_id: 'k1' }, { yokai_id: 'k2', rarity: 'rare' }, { yokai_id: 'core-only' },
+    { yokai_id: 'k1' }, { yokai_id: 'k2' }, { yokai_id: 'core-only' },
     { yokai_id: 'rally', rally_key: 'x' }, { yokai_id: 'qr' }, { yokai_id: 'leg', rarity: 'legendary' },
+    { yokai_id: 'rare', rarity: 'rare' }, { yokai_id: 'strong' },
   ];
   const kodama = [
-    { yokai_id: 'k1', prefecture: '福島県', regions: ['会津'] },
+    { yokai_id: 'k1', prefecture: '福島県', regions: ['会津'], youryoku: 1 },
     { yokai_id: 'k2', regions: ['熊本県多良木町'] },
     { yokai_id: 'rally' }, { yokai_id: 'qr', require_qr: true }, { yokai_id: 'leg' },
+    { yokai_id: 'rare', youryoku: 1 }, { yokai_id: 'strong', youryoku: 2 },
   ] as unknown as YokaiDBItem[];
   const c = buildCandidates(core, kodama);
   assert.deepEqual(c.map((x) => x.yokai_id), ['k1', 'k2']);
   assert.equal(c[0].rarity, 'common');
   assert.deepEqual(c[0].prefectures, ['福島県']);
-  assert.equal(c[1].rarity, 'rare');
   assert.deepEqual(c[1].prefectures, ['熊本県']);
 });
 

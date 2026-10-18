@@ -271,10 +271,6 @@ html, body {
 .hitodama-marker.computed-spawn img {
   filter: hue-rotate(-80deg) saturate(1.1);
 }
-.hitodama-marker.computed-spawn.known {
-  opacity: 0.4;
-  filter: grayscale(0.6) drop-shadow(0 0 3px rgba(80,220,170,0.4));
-}
 .hitodama-marker.computed-spawn.in-range {
   opacity: 1;
   filter: drop-shadow(0 0 10px rgba(80,220,170,1));

@@ -22,13 +22,23 @@ export const SPAWN_CONFIG = {
   /** マス外周のうち出現させない幅（マス一辺に対する割合） */
   CELL_EDGE_MARGIN: 0.1,
 
-  /** レア度ごとの抽選の重み。0 は計算配置に出さない */
+  /**
+   * レア度ごとの抽選の重み。0 は計算配置に出さない。
+   * 計算配置は「経験値を稼ぐための雑魚妖怪」の位置づけなので common だけを出す。
+   * 将来 uncommon 以上を混ぜるときは重みを入れる（当初案: 60 / 28 / 12 / 0）。
+   */
   RARITY_WEIGHTS: {
     common: 60,
-    uncommon: 28,
-    rare: 12,
+    uncommon: 0,
+    rare: 0,
     legendary: 0,
   } satisfies Record<Rarity, number>,
+  /** 計算配置に出す妖力の上限（kodama_db.youryoku。1 = 迷霊。未設定は1扱い） */
+  MAX_YOURYOKU: 1,
+  /** 計算配置の捕獲は荒魂・結界などの補正に関係なく1回で成立させる */
+  SINGLE_ATTEMPT: true,
+  /** 図鑑に既に在る妖怪を計算配置で捕まえたときの経験値（術力は消費しない） */
+  REENCOUNTER_EXP: 10,
   /** rarity 項目が無い妖怪の扱い */
   DEFAULT_RARITY: 'common' as Rarity,
   /** マスの都道府県が妖怪の地域情報に含まれるときの重み倍率 */

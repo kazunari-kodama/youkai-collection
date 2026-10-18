@@ -48,6 +48,8 @@ interface CaptureContext {
   job?:       string;
   rallyKey?:  string;
   debug?:     boolean;
+  /** true なら補正に関係なく1回で封印・契約が成立する（計算配置） */
+  singleAttempt?: boolean;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -175,6 +177,7 @@ async function captureComputed(body: CaptureRequest): Promise<APIGatewayProxyRes
       faction: body.faction ?? 'exorcist',
       job: body.job,
       debug: body.debug,
+      singleAttempt: SPAWN_CONFIG.SINGLE_ATTEMPT,
     });
   } catch (e) {
     await rollback();
@@ -182,10 +185,14 @@ async function captureComputed(body: CaptureRequest): Promise<APIGatewayProxyRes
   }
 
   const resBody = JSON.parse(result.body) as Record<string, unknown>;
-  // 図鑑に既に在る妖怪（封印済み・契約済み）: 出現は消費し、再会として成功を返す（報酬なし）
+  // 図鑑に既に在る妖怪（封印済み・契約済み）: 計算配置は経験値稼ぎの場なので、
+  // 図鑑は変えずに経験値だけ与える（術力は消費しない）
   if (result.statusCode === 409) {
+    const exp = SPAWN_CONFIG.REENCOUNTER_EXP;
+    await updatePlayerProfile(deviceId, body.faction ?? 'exorcist', exp, body.job);
     return { statusCode: 200, headers: HEADERS, body: JSON.stringify({
-      success: true, already_in_zukan: true, spawn_id: spawn.spawn_id, youkaiId: spawn.yokai_id,
+      success: true, already_in_zukan: true, exp_gained: exp,
+      spawn_id: spawn.spawn_id, youkaiId: spawn.yokai_id,
     })};
   }
   // 術力不足などで図鑑に反映できなかったときは、出現を消費しない
@@ -224,7 +231,7 @@ async function applyCapture(ctx: CaptureContext): Promise<APIGatewayProxyResult>
     }
     const youryoku  = (youkai.youryoku ?? 1) as number;
     const rankInfo  = YOURYOKU_RANKS[youryoku] ?? YOURYOKU_RANKS[1];
-    const required  = rankInfo.trials;
+    const required  = ctx.singleAttempt ? 1 : rankInfo.trials;
     const prevProg  = (existing?.seal_progress as number | undefined) ?? 0;
     const newProg   = prevProg + 1;
     const now       = new Date().toISOString();
@@ -333,7 +340,7 @@ async function applyCapture(ctx: CaptureContext): Promise<APIGatewayProxyResult>
 
   // 荒魂デバフ: 封印試行回数+1
   const aragamiPenalty = isAragami ? 1 : 0;
-  const required = Math.max(1,
+  const required = ctx.singleAttempt ? 1 : Math.max(1,
     rankInfo.trials
     - (kekkaiBonus   ? 1 : 0)
     - (nigitamaBonus ? 1 : 0)

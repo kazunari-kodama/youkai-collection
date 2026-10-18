@@ -170,12 +170,25 @@ test('POST /capture: 計算配置の捕獲 → 図鑑反映 → 二重取りは 
   assert.equal(list.body.spawns.find((x: { spawn_id: string }) => x.spawn_id === s.spawn_id).captured, true);
 });
 
-test('POST /capture: 図鑑に既に在る妖怪の出現は「再会」として成功（報酬なし）', async () => {
+test('POST /capture: 図鑑に既に在る妖怪の出現でも経験値を得る（術力は消費しない）', async () => {
   const s = currentSpawnNearTokyo();
-  tbl('captures').set(`dev-2|${s.yokai_id}`, { deviceId: 'dev-2', youkaiId: s.yokai_id, actionType: 'seal' });
-  const r = await post({ deviceId: 'dev-2', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 });
+  tbl('captures').set(`dev-2|${s.yokai_id}`, { deviceId: 'dev-2', youkaiId: s.yokai_id, actionType: 'bond' });
+  const r = await post({ deviceId: 'dev-2', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8, actionType: 'bond', faction: 'supernatural' });
   assert.equal(r.status, 200);
   assert.equal(r.body.already_in_zukan, true);
+  assert.equal(r.body.exp_gained, 10);
+  assert.equal(tbl('profile').get('dev-2')?.exp, 10);
+  assert.equal(tbl('profile').get('dev-2')?.jutsu_updated_at, undefined); // 術力の消費（deductJutsu）が走っていない
+});
+
+test('POST /capture: 荒魂化していても計算配置は1回で封印できる', async () => {
+  const s = currentSpawnNearTokyo();
+  tbl('aragami').set(s.yokai_id, { youkaiId: s.yokai_id, youryoku: 3, expires_at: '2999-01-01T00:00:00Z' });
+  const r = await post({ deviceId: 'dev-7', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 });
+  tbl('aragami').delete(s.yokai_id);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.sealed, true);
+  assert.equal(tbl('captures').get(`dev-7|${s.yokai_id}`)?.actionType, 'seal');
 });
 
 test('POST /capture: 術力不足で図鑑に反映できなければ出現は消費しない', async () => {
