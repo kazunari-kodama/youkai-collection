@@ -261,19 +261,23 @@ html, body {
   0%, 100% { transform: translateY(0) rotate(-3deg) scale(1); }
   50% { transform: translateY(-8px) rotate(3deg) scale(1.15); }
 }
-/* 計算配置: 固定配置より小さく控えめに */
+/* 計算配置: 固定配置より小さく控えめに。炎は翡翠色（青い人魂を色相回転） */
 .hitodama-marker.computed-spawn {
   width: 26px;
   height: 26px;
-  opacity: 0.7;
-  filter: drop-shadow(0 0 4px rgba(85,170,255,0.55));
+  opacity: 0.75;
+  filter: drop-shadow(0 0 4px rgba(80,220,170,0.6));
+}
+.hitodama-marker.computed-spawn img {
+  filter: hue-rotate(-80deg) saturate(1.1);
 }
 .hitodama-marker.computed-spawn.known {
   opacity: 0.4;
-  filter: grayscale(0.6) drop-shadow(0 0 3px rgba(85,170,255,0.4));
+  filter: grayscale(0.6) drop-shadow(0 0 3px rgba(80,220,170,0.4));
 }
 .hitodama-marker.computed-spawn.in-range {
   opacity: 1;
+  filter: drop-shadow(0 0 10px rgba(80,220,170,1));
 }
 .hitodama-marker.aragami-marker {
   animation: aragami-pulse 1.6s ease-in-out infinite;
