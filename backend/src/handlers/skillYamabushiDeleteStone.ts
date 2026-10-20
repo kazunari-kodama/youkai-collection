@@ -2,6 +2,7 @@ import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import { ddb, YAMABUSHI_STONES_TABLE } from '../lib/dynamodb';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -16,7 +17,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, stone_id } = body;
-  if (!deviceId || !stone_id) {
+  if (!isValidDeviceId(deviceId) || !stone_id) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

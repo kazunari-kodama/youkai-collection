@@ -133,24 +133,42 @@ async function apiGet(path) {
   return res.json();
 }
 
-async function apiPost(path, body) {
+// 通信断・JSON でない応答（502 の HTML など）でも例外を投げず { ok:false, status:0 } を返す。
+// 呼び出し側は res.ok を見るだけでよく、封印演出などが途中で止まったままにならない。
+async function _apiSend(method, path, body) {
   const payload = state.debugMode ? { ...body, debug: true } : body;
-  const res = await fetch(API_BASE_URL + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return { ok: res.ok, status: res.status, data: await res.json() };
+  try {
+    const res = await fetch(API_BASE_URL + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    console.warn(`[api] ${method} ${path} failed`, e);
+    return { ok: false, status: 0, data: { error: '通信エラー。電波の良い場所で再度お試しください' } };
+  }
 }
 
-async function apiPut(path, body) {
-  const payload = state.debugMode ? { ...body, debug: true } : body;
-  const res = await fetch(API_BASE_URL + path, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return { ok: res.ok, status: res.status, data: await res.json() };
+const apiPost = (path, body) => _apiSend('POST', path, body);
+const apiPut  = (path, body) => _apiSend('PUT', path, body);
+
+// --- 案内モーダル（先へ進めないときに理由と次の一手を示す） ---
+function showNotice({ title, body, actionLabel, onAction, dismissible = true }) {
+  document.getElementById('notice-title').textContent = title;
+  document.getElementById('notice-body').textContent = body;
+  const action = document.getElementById('notice-action');
+  action.textContent = actionLabel;
+  action.onclick = () => { closeNotice(); onAction(); };
+  const dismiss = document.getElementById('notice-dismiss');
+  dismiss.style.display = dismissible ? '' : 'none';
+  dismiss.onclick = closeNotice;
+  document.getElementById('notice-modal').classList.add('show');
+}
+
+function closeNotice() {
+  document.getElementById('notice-modal').classList.remove('show');
 }
 
 // --- Initial data load --------------------------------------
@@ -161,7 +179,8 @@ async function loadData() {
       apiGet('/youkai'),
       apiGet(`/collection?deviceId=${encodeURIComponent(DEVICE_ID)}`),
     ]);
-    youkaiData = youkai;
+    // 座標が数値でない妖怪は描画できない（1件で地図全体が止まる）ので除く
+    youkaiData = youkai.filter((y) => Number.isFinite(y.lat) && Number.isFinite(y.lon));
     capturedIds  = new Map(collection.map((c) => [c.youkaiId, c.actionType ?? 'seal']));
     sealProgress = new Map(
       collection
@@ -176,6 +195,23 @@ async function loadData() {
     setStatus('データ読込失敗: ' + e.message);
     return false;
   }
+}
+
+/** 読込に成功するまで、案内モーダルの「再読み込み」で何度でもやり直せるようにする */
+function _loadDataWithRetry() {
+  return new Promise((resolve) => {
+    const attempt = async () => {
+      if (await loadData()) { resolve(); return; }
+      showNotice({
+        title: '妖 気 が 届 か ぬ',
+        body: '妖怪の記録を読み込めませんでした。\n電波の良い場所で、もう一度お試しください。',
+        actionLabel: '再 読 み 込 み',
+        onAction: attempt,
+        dismissible: false,
+      });
+    };
+    attempt();
+  });
 }
 
 // --- Haversine (クライアント側 事前チェック) -----------------
@@ -461,15 +497,39 @@ function startGeolocation() {
     return;
   }
   setStatus('位置情報取得中…');
-  navigator.geolocation.watchPosition(
+  if (_geoWatchId != null) navigator.geolocation.clearWatch(_geoWatchId);
+  _geoWatchId = navigator.geolocation.watchPosition(
     (pos) => { if (!state.debugMode) updatePlayerPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy); },
     (err) => {
       console.warn('Geolocation error:', err);
       setStatus(IS_DEV ? '位置情報拒否/失敗 — デバッグONで地図クリック' : '位置情報を取得できませんでした');
       autoEnableDebug();
+      if (!IS_DEV) _showGeoHelp(err);
     },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
   );
+}
+
+let _geoWatchId = null;
+let _geoHelpShown = false;
+
+/** 位置情報が使えないと遊べないので、理由と直し方を一度だけ案内する（タイムアウトは静かに再試行） */
+function _showGeoHelp(err) {
+  if (_geoHelpShown || err.code === err.TIMEOUT || state.playerPos) return;
+  _geoHelpShown = true;
+  const denied = err.code === err.PERMISSION_DENIED;
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const howTo = isIOS
+    ? '「設定」→「プライバシーとセキュリティ」→「位置情報サービス」をオンにし、\n「Safari の Web サイト」を「使用中のみ許可」にしてください。\nその後、このページを再読み込みしてください。'
+    : 'アドレスバーの錠前（またはサイト情報）から、このサイトの「位置情報」を「許可」にしてください。\nその後、このページを再読み込みしてください。';
+  showNotice({
+    title: denied ? '居 所 が 掴 め ぬ' : '居 所 を 探 し て お る',
+    body: denied
+      ? `妖怪は、そなたが歩む先にのみ現れます。\n位置情報の利用が許可されていません。\n\n${howTo}`
+      : '現在地を取得できませんでした。\n空の開けた場所で、しばらくお待ちください。',
+    actionLabel: denied ? 'ページを再読み込み' : 'もう一度試す',
+    onAction: () => { _geoHelpShown = false; denied ? location.reload() : startGeolocation(); },
+  });
 }
 
 function autoEnableDebug() {
@@ -1619,8 +1679,7 @@ async function dismissIntro() {
   document.getElementById('intro').classList.add('hide');
   setTimeout(async () => {
     document.getElementById('intro').style.display = 'none';
-    const ok = await loadData();
-    if (!ok) return;
+    await _loadDataWithRetry();
     waitForLeaflet(async () => {
       initMap();
       _initSkillUI();
@@ -2711,7 +2770,7 @@ let _kitoshiPrayersData  = [];
 const _receivedPrayerIds = new Set();
 
 async function _loadKitoshiPrayers() {
-  const data = await apiGet('/skill/kitoshi/prayers').catch(() => null);
+  const data = await apiGet(`/skill/kitoshi/prayers?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
   if (!data || !map) return;
 
   _kitoshiPrayerLayers.forEach((l) => map.removeLayer(l));
@@ -2719,7 +2778,7 @@ async function _loadKitoshiPrayers() {
   _kitoshiPrayersData  = data.prayers ?? [];
 
   _kitoshiPrayersData.forEach((p) => {
-    const isOwn    = p.deviceId === DEVICE_ID;
+    const isOwn    = !!p.is_own;
     const color    = isOwn ? '#b08040' : '#9070c0';
     const circle   = L.circle([p.lat, p.lon], {
       radius:      40,
@@ -2733,7 +2792,7 @@ async function _loadKitoshiPrayers() {
     circle.addTo(map);
     _kitoshiPrayerLayers.push(circle);
 
-    const uid      = _escapeHtml(p.deviceId.slice(0, 8)) + '…';
+    const uid      = isOwn ? 'あなたの祈り' : '旅の祈祷師';
     const expiresH = Math.max(0, Math.round((new Date(p.expires_at) - Date.now()) / 3600000));
     const effect   = isOwn ? '' : '<br><span style="color:#aaa;">払い手-1 / 招き手+1（2時間）</span>';
     const pIcon    = L.divIcon({
@@ -2908,12 +2967,12 @@ function _checkPrayerProximity(lat, lon) {
   if (!faction) return;
 
   for (const p of _kitoshiPrayersData) {
-    if (p.deviceId === DEVICE_ID) continue;
+    if (p.is_own) continue;
     if (_receivedPrayerIds.has(p.prayer_id)) continue;
     const d = distanceMeters(lat, lon, p.lat, p.lon);
     if (d <= 40) {
       _receivedPrayerIds.add(p.prayer_id);
-      _applyPrayerEffect(p.deviceId, p.prayer_id, faction);
+      _applyPrayerEffect(p.owner_ref, p.prayer_id, faction);
     }
   }
 }
@@ -3090,10 +3149,10 @@ async function _checkCleanse(lat, lon) {
   }
 }
 
-async function _applyPrayerEffect(ownerDeviceId, prayerId, faction) {
+async function _applyPrayerEffect(ownerRef, prayerId, faction) {
   const res = await apiPost('/skill/kitoshi/prayer/receive', {
     deviceId:        DEVICE_ID,
-    owner_device_id: ownerDeviceId,
+    owner_ref:       ownerRef,
     prayer_id:       prayerId,
     faction,
   });
@@ -3107,7 +3166,7 @@ async function _applyPrayerEffect(ownerDeviceId, prayerId, faction) {
 let _yamabushiStoneLayers = [];
 
 async function _loadYamabushiStones() {
-  const data = await apiGet('/skill/yamabushi/stones').catch(() => null);
+  const data = await apiGet(`/skill/yamabushi/stones?deviceId=${encodeURIComponent(DEVICE_ID)}`).catch(() => null);
   if (!data || !map) return;
 
   _yamabushiStoneLayers.forEach((l) => map.removeLayer(l));
@@ -3132,35 +3191,46 @@ async function _loadYamabushiStones() {
       iconAnchor: [22, 44],
     });
 
-    const rows = stones.map((s) => {
-      const uid   = s.deviceId ? _escapeHtml(s.deviceId.slice(0, 8)) + '…' : '?';
-      const msg   = s.message ? `<div style="color:#444;margin-top:2px;">${_escapeHtml(s.message)}</div>` : '';
-      const liked = Array.isArray(s.liked_by) ? s.liked_by : [];
-      const likeCount = liked.length;
-      const isOwn     = s.deviceId === DEVICE_ID;
-      const hasLiked  = liked.includes(DEVICE_ID);
-      const oid = s.deviceId.replace(/'/g, '');
-      const sid = s.stone_id.replace(/'/g, '');
+    // サーバーから来た値を HTML 文字列に埋め込まず、DOM で組み立てる（inline onclick も使わない）。
+    // 他人の端末IDは API が返さないので、持ち主は「あなた」か「旅の山伏」とだけ表示する。
+    const popupEl = document.createElement('div');
+    popupEl.style.cssText = 'min-width:150px;max-width:220px;';
+    for (const s of stones) {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin:5px 0;font-size:11px;padding:5px 6px;border:1px solid #eee;border-radius:4px;';
 
-      const heart      = hasLiked ? '♥' : '♡';
-      const nextAction = hasLiked ? 'unlike' : 'like';
-      const col        = hasLiked ? '#e44' : '#aaa';
-      const likeBtn    = `<button onclick="likeYamabushiStone('${oid}','${sid}','${nextAction}')"
-        style="font-size:11px;padding:2px 8px;cursor:pointer;color:${col};border:1px solid ${col};background:none;border-radius:3px;">${heart} ${likeCount}</button>`;
-      const deleteBtn  = isOwn
-        ? `<button onclick="deleteYamabushiStone('${oid}','${sid}')"
-            style="font-size:10px;padding:2px 6px;cursor:pointer;color:#c44;border:1px solid #c44;background:none;border-radius:3px;margin-left:4px;">削除</button>`
-        : '';
-      const action = likeBtn + deleteBtn;
+      const who = document.createElement('span');
+      who.style.cssText = 'color:#888;font-size:10px;';
+      who.textContent = s.is_own ? 'あなたの石' : '旅の山伏';
+      row.appendChild(who);
 
-      return `<div style="margin:5px 0;font-size:11px;padding:5px 6px;border:1px solid #eee;border-radius:4px;">
-        <span style="color:#888;font-size:10px;">${uid}</span>${msg}
-        <div style="margin-top:4px;">${action}</div>
-      </div>`;
-    }).join('');
-    const popupHtml = `<div style="min-width:150px;max-width:220px;">${rows}</div>`;
+      if (s.message) {
+        const msg = document.createElement('div');
+        msg.style.cssText = 'color:#444;margin-top:2px;';
+        msg.textContent = s.message;
+        row.appendChild(msg);
+      }
 
-    const layer = L.marker([lat, lon], { icon, zIndexOffset: -100 }).bindPopup(popupHtml);
+      const actions = document.createElement('div');
+      actions.style.marginTop = '4px';
+      const col = s.liked_by_me ? '#e44' : '#aaa';
+      const likeBtn = document.createElement('button');
+      likeBtn.style.cssText = `font-size:11px;padding:2px 8px;cursor:pointer;color:${col};border:1px solid ${col};background:none;border-radius:3px;`;
+      likeBtn.textContent = `${s.liked_by_me ? '♥' : '♡'} ${Number(s.like_count) || 0}`;
+      likeBtn.addEventListener('click', () => likeYamabushiStone(s.owner_ref, s.stone_id, s.liked_by_me ? 'unlike' : 'like'));
+      actions.appendChild(likeBtn);
+      if (s.is_own) {
+        const delBtn = document.createElement('button');
+        delBtn.style.cssText = 'font-size:10px;padding:2px 6px;cursor:pointer;color:#c44;border:1px solid #c44;background:none;border-radius:3px;margin-left:4px;';
+        delBtn.textContent = '削除';
+        delBtn.addEventListener('click', () => deleteYamabushiStone(s.stone_id));
+        actions.appendChild(delBtn);
+      }
+      row.appendChild(actions);
+      popupEl.appendChild(row);
+    }
+
+    const layer = L.marker([lat, lon], { icon, zIndexOffset: -100 }).bindPopup(popupEl);
     layer.addTo(map);
     _yamabushiStoneLayers.push(layer);
   });
@@ -3193,11 +3263,11 @@ async function activateYamabushiStone() {
   });
 }
 
-async function likeYamabushiStone(ownerDeviceId, stoneId, action) {
+async function likeYamabushiStone(ownerRef, stoneId, action) {
   const res = await apiPost('/skill/yamabushi/stone/like', {
-    deviceId:        DEVICE_ID,
-    owner_device_id: ownerDeviceId,
-    stone_id:        stoneId,
+    deviceId:  DEVICE_ID,
+    owner_ref: ownerRef,
+    stone_id:  stoneId,
     action,
   });
   if (!res.ok) {
@@ -3207,7 +3277,7 @@ async function likeYamabushiStone(ownerDeviceId, stoneId, action) {
   await _loadYamabushiStones();
 }
 
-async function deleteYamabushiStone(ownerDeviceId, stoneId) {
+async function deleteYamabushiStone(stoneId) {
   if (!confirm('この石を削除しますか？')) return;
   const res = await apiPost('/skill/yamabushi/stone/delete', {
     deviceId: DEVICE_ID,

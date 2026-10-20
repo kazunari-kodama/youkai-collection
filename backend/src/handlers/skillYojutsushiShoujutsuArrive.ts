@@ -3,6 +3,7 @@ import { GetCommand, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, SHOUJUTSU_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, YOUKAI_TABLE } from '../lib/dynamodb';
 import { YOURYOKU_RANKS } from '../types/skill';
 import type { YokaiDBItem } from '../types/youkai';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -21,7 +22,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, shoujutsuId } = body;
-  if (!deviceId || !shoujutsuId) {
+  if (!isValidDeviceId(deviceId) || !shoujutsuId) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

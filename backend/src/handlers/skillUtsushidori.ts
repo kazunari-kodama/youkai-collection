@@ -4,6 +4,7 @@ import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
 import type { YokaiDBItem } from '../types/youkai';
 import { MAX_COPIED_POWERS, JUTSU_COST } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const EXP_GAIN = 12;
 
@@ -21,7 +22,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   const { deviceId, youkaiId, keyword } = body;
-  if (!deviceId || !youkaiId || !keyword) {
+  if (!isValidDeviceId(deviceId) || !youkaiId || !keyword) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

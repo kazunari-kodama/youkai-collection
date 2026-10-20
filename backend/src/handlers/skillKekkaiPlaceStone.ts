@@ -11,6 +11,7 @@ import {
   KekkaiStoneDBItem,
   KekkaiBarrierDBItem,
 } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -39,7 +40,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   const { deviceId, userLat, userLon } = body;
-  if (!deviceId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

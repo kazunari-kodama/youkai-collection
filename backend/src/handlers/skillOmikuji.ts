@@ -2,6 +2,7 @@ import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { GetCommand, QueryCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
 import { calcCurrentJutsu, maxJutsu, type JutsuProfile } from '../lib/jutsuriyoku';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 const OMIKUJI_COOLDOWN_HOURS = 24;
@@ -39,7 +40,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId } = body;
-  if (!deviceId) {
+  if (!isValidDeviceId(deviceId)) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing deviceId' }) };
   }
 

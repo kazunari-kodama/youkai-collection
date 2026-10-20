@@ -3,6 +3,7 @@ import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, NOROI_CURSES_TABLE } from '../lib/dynamodb';
 import { deductJutsu } from '../lib/jutsuriyoku';
 import { JUTSU_COST, NOROI_DURATION_DAYS } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -17,7 +18,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, youkaiId } = body;
-  if (!deviceId || !youkaiId) {
+  if (!isValidDeviceId(deviceId) || !youkaiId) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

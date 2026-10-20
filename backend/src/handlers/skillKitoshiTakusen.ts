@@ -4,6 +4,7 @@ import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, scanAll } from
 import { deductJutsu } from '../lib/jutsuriyoku';
 import { distanceMeters } from '../lib/distance';
 import { JUTSU_COST } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 const TAKUSEN_RADIUS_M   = 10_000;
@@ -21,7 +22,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, userLat, userLon } = body;
-  if (!deviceId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

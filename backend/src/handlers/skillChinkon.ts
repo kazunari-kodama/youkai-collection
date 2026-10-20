@@ -5,6 +5,7 @@ import { distanceMeters } from '../lib/distance';
 import { deductJutsu } from '../lib/jutsuriyoku';
 import { JUTSU_COST, YOURYOKU_RANKS, rankMeetsYouryoku } from '../types/skill';
 import type { YokaiDBItem } from '../types/youkai';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const CAPTURE_RADIUS_M = 13;
 const CHINKON_EXP      = 20;
@@ -16,7 +17,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, youkaiId, userLat, userLon } = body;
-  if (!deviceId || !youkaiId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || !youkaiId || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

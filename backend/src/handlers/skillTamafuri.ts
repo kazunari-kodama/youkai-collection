@@ -4,6 +4,7 @@ import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, ARAGAMI_TABLE 
 import { deductJutsu } from '../lib/jutsuriyoku';
 import { JUTSU_COST, ARAGAMI_TTL_HOURS } from '../types/skill';
 import type { YokaiDBItem } from '../types/youkai';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -13,7 +14,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, youkaiId } = body;
-  if (!deviceId || !youkaiId) {
+  if (!isValidDeviceId(deviceId) || !youkaiId) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

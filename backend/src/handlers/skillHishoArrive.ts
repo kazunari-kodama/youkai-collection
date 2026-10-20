@@ -8,6 +8,7 @@ import {
 } from '../types/skill';
 import { isInsideAnyBarrier } from '../lib/geometry';
 import type { YokaiDBItem } from '../types/youkai';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -27,7 +28,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   const { deviceId, shikigamiId } = body;
-  if (!deviceId || !shikigamiId) {
+  if (!isValidDeviceId(deviceId) || !shikigamiId) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

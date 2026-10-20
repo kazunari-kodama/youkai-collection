@@ -10,6 +10,7 @@ import {
   HYAKKI_MAX_TARGETS,
 } from '../types/skill';
 import type { YokaiDBItem } from '../types/youkai';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -19,7 +20,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, userLat, userLon } = body;
-  if (!deviceId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

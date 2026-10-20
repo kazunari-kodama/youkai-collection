@@ -132,6 +132,9 @@ Resources:
     Properties:
       TableName: youkai_research
       BillingMode: PAY_PER_REQUEST
+      # 誤操作・障害からの復旧用（直近35日の任意時点に戻せる）
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: research_id
           AttributeType: S
@@ -170,6 +173,8 @@ Resources:
     Properties:
       TableName: youkai_core
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: yokai_id
           AttributeType: S
@@ -261,6 +266,8 @@ Resources:
     Properties:
       TableName: youkai-captures
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: deviceId
           AttributeType: S
@@ -329,6 +336,8 @@ Resources:
     Properties:
       TableName: youkai-yamabushi-stones
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: deviceId
           AttributeType: S
@@ -410,12 +419,63 @@ Resources:
     Properties:
       TableName: youkai-player-profile
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: deviceId
           AttributeType: S
       KeySchema:
         - AttributeName: deviceId
           KeyType: HASH
+
+  # ---- 運用監視 ----
+  # 通知先のメール購読はスタック外で登録する（aws sns subscribe。アドレスをリポジトリに置かないため）
+  OpsAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: youkai-collection-ops-alerts
+
+  # 利用者に見えるエラー（API の 5xx）が続いたら通知
+  Api5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: youkai-collection-api-5xx
+      AlarmDescription: API Gateway prod の 5xx が5分間に10件以上
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: ApiName
+          Value: youkai-collection-web
+        - Name: Stage
+          Value: prod
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref OpsAlertsTopic]
+
+  # 想定外のアクセス量（攻撃・ループ・急な流入）を早めに知る。費用の暴走も防ぐ
+  ApiTrafficSpikeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: youkai-collection-api-traffic-spike
+      AlarmDescription: API Gateway prod のリクエストが5分間に3万件以上
+      Namespace: AWS/ApiGateway
+      MetricName: Count
+      Dimensions:
+        - Name: ApiName
+          Value: youkai-collection-web
+        - Name: Stage
+          Value: prod
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 30000
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref OpsAlertsTopic]
 
   # Lambda: GET /youkai
   ListYokaiFunction:
@@ -2010,6 +2070,9 @@ Resources:
             - Effect: Allow
               Action: [dynamodb:GetItem, dynamodb:UpdateItem]
               Resource: !GetAtt YamabushiStonesTable.Arn
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/youkai/spawn-secret'
       Events:
         Api:
           Type: Api
@@ -2094,6 +2157,9 @@ Resources:
             - Effect: Allow
               Action: [dynamodb:Scan]
               Resource: !GetAtt KitoshiPrayersTable.Arn
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/youkai/spawn-secret'
       Events:
         Api:
           Type: Api
@@ -2157,6 +2223,9 @@ Resources:
             - Effect: Allow
               Action: [dynamodb:UpdateItem]
               Resource: !GetAtt PlayerProfileTable.Arn
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/youkai/spawn-secret'
       Events:
         Api:
           Type: Api
@@ -2379,6 +2448,9 @@ Resources:
             - Effect: Allow
               Action: [dynamodb:Scan]
               Resource: !GetAtt YamabushiStonesTable.Arn
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/youkai/spawn-secret'
       Events:
         Api:
           Type: Api
@@ -2388,6 +2460,8 @@ Resources:
             Method: GET
 
 Outputs:
+  OpsAlertsTopicArn:
+    Value: !Ref OpsAlertsTopic
   UserPoolId:
     Description: Cognito User Pool ID
     Value: !Ref YokaiUserPool

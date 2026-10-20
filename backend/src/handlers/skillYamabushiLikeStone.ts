@@ -1,12 +1,15 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, YAMABUSHI_STONES_TABLE } from '../lib/dynamodb';
+import { isValidDeviceId } from '../lib/deviceId';
+import { decodeOwnerRef } from '../lib/ownerRef';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
 interface LikeRequest {
   deviceId:        string;
-  owner_device_id: string;
+  /** 石の持ち主の不透明な参照（GET /skill/yamabushi/stones の owner_ref） */
+  owner_ref:       string;
   stone_id:        string;
   action:          'like' | 'unlike';
 }
@@ -16,9 +19,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   try { body = JSON.parse(event.body ?? ''); }
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
-  const { deviceId, owner_device_id, stone_id, action } = body;
-  if (!deviceId || !owner_device_id || !stone_id || !action) {
+  const { deviceId, stone_id, action } = body;
+  if (!isValidDeviceId(deviceId) || !body.owner_ref || !stone_id || !action) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
+  }
+  const owner_device_id = await decodeOwnerRef(body.owner_ref);
+  if (!owner_device_id) {
+    return { statusCode: 404, headers: HEADERS, body: JSON.stringify({ error: 'Stone not found' }) };
   }
   if (action !== 'like' && action !== 'unlike') {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid action' }) };

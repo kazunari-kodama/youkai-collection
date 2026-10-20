@@ -129,7 +129,7 @@ function currentSpawnNearTokyo() {
 // ---- テスト ------------------------------------------------------------------
 
 test('GET /spawns: 9マス分の計算配置と、範囲内の固定配置を返す', async () => {
-  const { status, body } = await call(spawns, { queryStringParameters: { lat: '35.6812', lng: '139.7671', deviceId: 'dev-s' } });
+  const { status, body } = await call(spawns, { queryStringParameters: { lat: '35.6812', lng: '139.7671', deviceId: '00000000-0000-4000-8000-000000000001' } });
   assert.equal(status, 200);
   const computed = body.spawns.filter((s: { source: string }) => s.source === 'computed');
   const fixed = body.spawns.filter((s: { source: string }) => s.source === 'fixed');
@@ -151,14 +151,14 @@ test('GET /spawns: lat/lng が無ければ 400', async () => {
 
 test('POST /capture: 計算配置の捕獲 → 図鑑反映 → 二重取りは ALREADY_CAPTURED', async () => {
   const s = currentSpawnNearTokyo();
-  const req = { deviceId: 'dev-1', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8, actionType: 'seal' };
+  const req = { deviceId: '00000000-0000-4000-8000-000000000002', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8, actionType: 'seal' };
 
   const first = await post(req);
   assert.equal(first.status, 200, JSON.stringify(first.body));
   assert.equal(first.body.sealed, true);
   assert.equal(first.body.spawn_id, s.spawn_id);
   // 図鑑（既存の youkai-captures）に入っている
-  const rec = tbl('captures').get(`dev-1|${s.yokai_id}`);
+  const rec = tbl('captures').get(`00000000-0000-4000-8000-000000000002|${s.yokai_id}`);
   assert.equal(rec?.actionType, 'seal');
 
   const again = await post(req);
@@ -166,53 +166,53 @@ test('POST /capture: 計算配置の捕獲 → 図鑑反映 → 二重取りは 
   assert.equal(again.body.error, 'ALREADY_CAPTURED');
 
   // /spawns で captured が付く
-  const list = await call(spawns, { queryStringParameters: { lat: String(s.lat), lng: String(s.lng), deviceId: 'dev-1' } });
+  const list = await call(spawns, { queryStringParameters: { lat: String(s.lat), lng: String(s.lng), deviceId: '00000000-0000-4000-8000-000000000002' } });
   assert.equal(list.body.spawns.find((x: { spawn_id: string }) => x.spawn_id === s.spawn_id).captured, true);
 });
 
 test('POST /capture: 図鑑に既に在る妖怪の出現でも経験値を得る（術力は消費しない）', async () => {
   const s = currentSpawnNearTokyo();
-  tbl('captures').set(`dev-2|${s.yokai_id}`, { deviceId: 'dev-2', youkaiId: s.yokai_id, actionType: 'bond' });
-  const r = await post({ deviceId: 'dev-2', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8, actionType: 'bond', faction: 'supernatural' });
+  tbl('captures').set(`00000000-0000-4000-8000-000000000003|${s.yokai_id}`, { deviceId: '00000000-0000-4000-8000-000000000003', youkaiId: s.yokai_id, actionType: 'bond' });
+  const r = await post({ deviceId: '00000000-0000-4000-8000-000000000003', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8, actionType: 'bond', faction: 'supernatural' });
   assert.equal(r.status, 200);
   assert.equal(r.body.already_in_zukan, true);
   assert.equal(r.body.exp_gained, 10);
-  assert.equal(tbl('profile').get('dev-2')?.exp, 10);
-  assert.equal(tbl('profile').get('dev-2')?.jutsu_updated_at, undefined); // 術力の消費（deductJutsu）が走っていない
+  assert.equal(tbl('profile').get('00000000-0000-4000-8000-000000000003')?.exp, 10);
+  assert.equal(tbl('profile').get('00000000-0000-4000-8000-000000000003')?.jutsu_updated_at, undefined); // 術力の消費（deductJutsu）が走っていない
 });
 
 test('POST /capture: 荒魂化していても計算配置は1回で封印できる', async () => {
   const s = currentSpawnNearTokyo();
   tbl('aragami').set(s.yokai_id, { youkaiId: s.yokai_id, youryoku: 3, expires_at: '2999-01-01T00:00:00Z' });
-  const r = await post({ deviceId: 'dev-7', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 });
+  const r = await post({ deviceId: '00000000-0000-4000-8000-000000000004', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 });
   tbl('aragami').delete(s.yokai_id);
   assert.equal(r.status, 200);
   assert.equal(r.body.sealed, true);
-  assert.equal(tbl('captures').get(`dev-7|${s.yokai_id}`)?.actionType, 'seal');
+  assert.equal(tbl('captures').get(`00000000-0000-4000-8000-000000000004|${s.yokai_id}`)?.actionType, 'seal');
 });
 
 test('POST /capture: 術力不足で図鑑に反映できなければ出現は消費しない', async () => {
   const s = currentSpawnNearTokyo();
-  tbl('profile').set('dev-3', { deviceId: 'dev-3', jutsuriyoku: 0, jutsu_updated_at: new Date().toISOString(), rank: 'C' });
-  const r = await post({ deviceId: 'dev-3', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8, actionType: 'bond', faction: 'supernatural' });
+  tbl('profile').set('00000000-0000-4000-8000-000000000005', { deviceId: '00000000-0000-4000-8000-000000000005', jutsuriyoku: 0, jutsu_updated_at: new Date().toISOString(), rank: 'C' });
+  const r = await post({ deviceId: '00000000-0000-4000-8000-000000000005', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8, actionType: 'bond', faction: 'supernatural' });
   assert.equal(r.status, 402);
-  assert.equal(tbl('spawn_captures').has(`dev-3|${s.spawn_id}`), false);
+  assert.equal(tbl('spawn_captures').has(`00000000-0000-4000-8000-000000000005|${s.spawn_id}`), false);
 });
 
 test('POST /capture: 速度異常は SPEED_ANOMALY で拒否し、位置は更新しない', async () => {
   const s = currentSpawnNearTokyo();
-  const osaka = { deviceId: 'dev-4', spawn_last_lat: 34.702, spawn_last_lng: 135.495, spawn_last_at: Date.now() - 60_000 };
-  tbl('profile').set('dev-4', { ...osaka });
-  const r = await post({ deviceId: 'dev-4', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 });
+  const osaka = { deviceId: '00000000-0000-4000-8000-000000000006', spawn_last_lat: 34.702, spawn_last_lng: 135.495, spawn_last_at: Date.now() - 60_000 };
+  tbl('profile').set('00000000-0000-4000-8000-000000000006', { ...osaka });
+  const r = await post({ deviceId: '00000000-0000-4000-8000-000000000006', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 });
   assert.equal(r.status, 403);
   assert.equal(r.body.error, 'SPEED_ANOMALY');
-  assert.equal(tbl('profile').get('dev-4')?.spawn_last_lat, osaka.spawn_last_lat);
-  assert.equal(tbl('spawn_captures').has(`dev-4|${s.spawn_id}`), false);
+  assert.equal(tbl('profile').get('00000000-0000-4000-8000-000000000006')?.spawn_last_lat, osaka.spawn_last_lat);
+  assert.equal(tbl('spawn_captures').has(`00000000-0000-4000-8000-000000000006|${s.spawn_id}`), false);
 });
 
 test('POST /capture: 距離・精度・slot の拒否理由コード', async () => {
   const s = currentSpawnNearTokyo();
-  const base = { deviceId: 'dev-5', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 };
+  const base = { deviceId: '00000000-0000-4000-8000-000000000007', spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 };
   assert.equal((await post({ ...base, lat: s.lat + 0.001 })).body.error, 'TOO_FAR');
   assert.equal((await post({ ...base, accuracy: 120 })).body.error, 'LOW_ACCURACY');
   assert.equal((await post({ ...base, spawn_id: `${s.geohash}:${s.hourWindow}:7` })).body.error, 'INVALID_SPAWN');
@@ -224,10 +224,19 @@ test('POST /capture: 距離・精度・slot の拒否理由コード', async () 
 });
 
 test('POST /capture: 既存の固定配置の捕獲は従来どおり', async () => {
-  const r = await post({ deviceId: 'dev-6', youkaiId: 'y-fixed', userLat: 35.6812, userLon: 139.7671 });
+  const r = await post({ deviceId: '00000000-0000-4000-8000-000000000008', youkaiId: 'y-fixed', userLat: 35.6812, userLon: 139.7671 });
   assert.equal(r.status, 200);
   assert.equal(r.body.sealed, true);
-  const far = await post({ deviceId: 'dev-6', youkaiId: 'y-kappa', userLat: 35.6812, userLon: 139.7671 });
+  const far = await post({ deviceId: '00000000-0000-4000-8000-000000000008', youkaiId: 'y-kappa', userLat: 35.6812, userLon: 139.7671 });
   assert.equal(far.status, 403);
   assert.equal(far.body.error, 'Too far');
 });
+
+test('端末IDが UUID でなければ 400（HTML を混ぜた ID などを DB に入れない）', async () => {
+  const s = currentSpawnNearTokyo();
+  for (const deviceId of ['dev-1', '"><img src=x onerror=alert(1)>', '', 'x'.repeat(40)]) {
+    const r = await post({ deviceId, spawn_id: s.spawn_id, lat: s.lat, lng: s.lng, accuracy: 8 });
+    assert.equal(r.status, 400, deviceId);
+  }
+});
+

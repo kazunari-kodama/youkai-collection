@@ -3,6 +3,7 @@ import { deductJutsu } from '../lib/jutsuriyoku';
 import { GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
 import { RANK_SHIKIGAMI_SLOTS, JUTSU_COST } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const EXP_GAIN = 10;
 
@@ -20,7 +21,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   const { deviceId, youkaiId } = body;
-  if (!deviceId || !youkaiId) {
+  if (!isValidDeviceId(deviceId) || !youkaiId) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

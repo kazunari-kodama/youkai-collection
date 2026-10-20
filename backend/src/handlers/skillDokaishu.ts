@@ -5,6 +5,7 @@ import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, YOUKAI_TABLE, CAPTURES_TABLE, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
 import { distanceMeters } from '../lib/distance';
 import type { YokaiDBItem } from '../types/youkai';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const DOKAISHU_RANGE_M = 50;
 const EXP_GAIN = 5;
@@ -23,7 +24,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   const { deviceId, youkaiId, userLat, userLon } = body;
-  if (!deviceId || !youkaiId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || !youkaiId || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

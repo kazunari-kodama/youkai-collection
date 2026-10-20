@@ -11,6 +11,7 @@ import { validateComputedCapture, REJECT_STATUS, type SpawnRejectCode } from '..
 import { SPAWN_CONFIG } from '../config/spawn';
 import type { YokaiDBItem } from '../types/youkai';
 import { YOURYOKU_RANKS, JUTSU_COST, rankBeatsYouryoku, NOROI_EFFECT_HOURS } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -60,7 +61,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (body.spawn_id !== undefined) return captureComputed(body);
 
   const { deviceId, youkaiId, userLat, userLon } = body;
-  if (!deviceId || !youkaiId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || !youkaiId || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 
@@ -106,7 +107,7 @@ function reject(code: SpawnRejectCode, extra: Record<string, unknown> = {}): API
 async function captureComputed(body: CaptureRequest): Promise<APIGatewayProxyResult> {
   const { deviceId } = body;
   const actionType = body.actionType ?? 'seal';
-  if (!deviceId || typeof deviceId !== 'string') {
+  if (!isValidDeviceId(deviceId)) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
   if (actionType !== 'seal' && actionType !== 'bond') {

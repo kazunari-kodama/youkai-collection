@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/spawnEngine.test.ts test/captureComputed.test.ts"
+    "test": "node --import tsx --test test/spawnEngine.test.ts test/captureComputed.test.ts test/ownerRef.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",

@@ -9,6 +9,7 @@ import {
   SHOUJUTSU_SPEED_MIN_PER_KM,
   SHOUJUTSU_RANGE_M_PER_OWN,
 } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -26,7 +27,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, summonedYoukaiId, targetYoukaiId, userLat, userLon } = body;
-  if (!deviceId || !summonedYoukaiId || !targetYoukaiId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || !summonedYoukaiId || !targetYoukaiId || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

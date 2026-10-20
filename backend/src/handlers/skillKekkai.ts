@@ -2,6 +2,7 @@ import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { GetCommand, QueryCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, CAPTURES_TABLE, PLAYER_PROFILE_TABLE, YOUKAI_TABLE } from '../lib/dynamodb';
 import { distanceMeters } from '../lib/distance';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const KEKKAI_MIN_AREA_M2 = 500; // 最小三角面積（m²）
 
@@ -34,7 +35,7 @@ function centroid(points: { lat: number; lon: number }[]) {
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const deviceId = event.queryStringParameters?.deviceId;
-  if (!deviceId) {
+  if (!isValidDeviceId(deviceId)) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing deviceId' }) };
   }
 

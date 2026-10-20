@@ -10,6 +10,7 @@ import {
   FLYING_SHIKIGAMI_SPEED_MIN_PER_KM,
   FlyingShikigamiDBItem,
 } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -31,7 +32,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   const { deviceId, targetYoukaiId, userLat, userLon } = body;
-  if (!deviceId || !targetYoukaiId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || !targetYoukaiId || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 

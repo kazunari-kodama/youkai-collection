@@ -261,6 +261,23 @@ html, body {
   0%, 100% { transform: translateY(0) rotate(-3deg) scale(1); }
   50% { transform: translateY(-8px) rotate(3deg) scale(1.15); }
 }
+/* 先へ進めないときの案内モーダル */
+.notice-body {
+  white-space: pre-line;
+  text-align: left;
+  margin: 12px 0 18px;
+}
+.notice-dismiss {
+  display: block;
+  margin: 10px auto 0;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* 詳細画面のイラストクレジット */
 .modal-credit {
   margin: -8px 0 12px;

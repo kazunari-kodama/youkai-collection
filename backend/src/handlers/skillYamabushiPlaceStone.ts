@@ -4,6 +4,7 @@ import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, PLAYER_PROFILE_TABLE, YAMABUSHI_STONES_TABLE } from '../lib/dynamodb';
 import { deductJutsu } from '../lib/jutsuriyoku';
 import { JUTSU_COST } from '../types/skill';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -20,7 +21,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   catch { return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { deviceId, userLat, userLon, message } = body;
-  if (!deviceId || userLat == null || userLon == null) {
+  if (!isValidDeviceId(deviceId) || userLat == null || userLon == null) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Missing fields' }) };
   }
   if (message != null && (typeof message !== 'string' || message.length > 50)) {

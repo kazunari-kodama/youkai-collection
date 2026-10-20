@@ -1,6 +1,7 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, PLAYER_PROFILE_TABLE } from '../lib/dynamodb';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -9,7 +10,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Disabled in production' }) };
   }
   const deviceId = event.queryStringParameters?.deviceId;
-  if (!deviceId) {
+  if (!isValidDeviceId(deviceId)) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'deviceId required' }) };
   }
 

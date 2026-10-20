@@ -6,6 +6,7 @@ import { cellsAround, computeCell, hourWindowOf } from '../lib/spawn/engine';
 import { getSpawnPool } from '../lib/spawn/pool';
 import { getSpawnSecret } from '../lib/spawn/secret';
 import { checkAndRecordMovement } from '../lib/spawn/movement';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -25,7 +26,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'lat and lng required' }) };
   }
-  const deviceId = typeof q.deviceId === 'string' && q.deviceId ? q.deviceId : null;
+  const deviceId = isValidDeviceId(q.deviceId) ? q.deviceId : null;
 
   const nowMs = Date.now();
   const [secret, pool] = await Promise.all([getSpawnSecret(), getSpawnPool(nowMs)]);

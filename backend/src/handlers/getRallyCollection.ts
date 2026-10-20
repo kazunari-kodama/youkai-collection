@@ -1,6 +1,7 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, CAPTURES_TABLE } from '../lib/dynamodb';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -9,7 +10,7 @@ const HEADERS = {
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const { deviceId, key } = event.queryStringParameters ?? {};
-  if (!deviceId || !key) {
+  if (!isValidDeviceId(deviceId) || !key) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'deviceId and key required' }) };
   }
 

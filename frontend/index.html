@@ -149,6 +149,16 @@
 </div>
 
 <!-- Detail modal -->
+<!-- 読込失敗・位置情報拒否などで先へ進めないときの案内（app.js の showNotice） -->
+<div class="modal-overlay" id="notice-modal">
+  <div class="modal">
+    <div class="modal-headline" id="notice-title"></div>
+    <div class="modal-desc notice-body" id="notice-body"></div>
+    <button class="btn-primary" id="notice-action"></button>
+    <button class="notice-dismiss" id="notice-dismiss">閉じる</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="detail-modal">
   <div class="modal">
     <button class="modal-close" onclick="closeDetail()">×</button>

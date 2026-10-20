@@ -10,6 +10,7 @@ import {
   SHOUJUTSU_TABLE,
   PLAYER_PROFILE_TABLE,
 } from '../lib/dynamodb';
+import { isValidDeviceId } from '../lib/deviceId';
 
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
@@ -37,7 +38,7 @@ async function deleteAllByDevice(table: string, deviceId: string, skAttr: string
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const deviceId = event.queryStringParameters?.deviceId;
-  if (!deviceId) {
+  if (!isValidDeviceId(deviceId)) {
     return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'deviceId required' }) };
   }
 
