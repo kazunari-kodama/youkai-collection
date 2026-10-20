@@ -7,15 +7,16 @@
  * 学芸員承認済みの youkai_core データをそのまま Claude Project の
  * コンテキストとして与える運用にするための出力を作る。
  *
- * GET /core は公開エンドポイント（認証不要）。cursor パラメータで
- * ページングし（academicListYoukai.ts と同じ方式）、AWS 認証情報がない
- * 環境（Claude Code on the web 等）からでも全件取得できる。
+ * GET /core は管理キー必須（学術データは premium 限定のため一般公開しない）。
+ * cursor パラメータでページングし（academicListYoukai.ts と同じ方式）、
+ * AWS 認証情報がない環境（Claude Code on the web 等）でもキーがあれば全件取得できる。
  *
  * 使い方:
  *   node export_academic_context.mjs [出力先パス]
  *
  * 環境変数:
- *   API_BASE  デフォルト: 本番 API Gateway エンドポイント
+ *   API_BASE    デフォルト: 本番 API Gateway エンドポイント
+ *   ADMIN_KEY   管理キー（X-Admin-Key）。または SYSTEM_KEY（X-System-Key）。どちらか必須
  */
 
 import { writeFile } from 'node:fs/promises';
@@ -24,6 +25,13 @@ import path from 'node:path';
 const API_BASE = process.env.API_BASE ?? 'https://5rmuhg7c8d.execute-api.ap-northeast-1.amazonaws.com/prod';
 const OUTPUT_PATH = process.argv[2] ?? path.join(import.meta.dirname, '..', '..', 'docs', 'context', 'youkai_academic_context.md');
 const PAGE_LIMIT = 200;
+const AUTH_HEADERS = process.env.ADMIN_KEY
+  ? { 'X-Admin-Key': process.env.ADMIN_KEY }
+  : process.env.SYSTEM_KEY ? { 'X-System-Key': process.env.SYSTEM_KEY } : null;
+if (!AUTH_HEADERS) {
+  console.error('[export] ADMIN_KEY または SYSTEM_KEY を環境変数で指定してください（GET /core は管理キー必須）');
+  process.exit(1);
+}
 
 async function fetchAllCoreItems() {
   const items = [];
@@ -36,7 +44,7 @@ async function fetchAllCoreItems() {
     url.searchParams.set('limit', String(PAGE_LIMIT));
     if (cursor) url.searchParams.set('cursor', encodeURIComponent(JSON.stringify(cursor)));
 
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: AUTH_HEADERS });
     if (!res.ok) throw new Error(`GET /core failed: ${res.status} ${await res.text()}`);
     const body = await res.json();
 
